@@ -2,10 +2,11 @@
 import React from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { C, S } from '../theme';
-import { Card, SectionLabel, StatusBadge, Tag, TagRow, Notice, Btn, ConfirmLine, H1, P, Meta, ANIMAL_EMOJI, SERVICE_EMOJI } from '../components';
+import { Card, SectionLabel, StatusBadge, Tag, TagRow, Notice, Btn, ConfirmLine, KV, H1, P } from '../components';
+import { ANIMAL_ICON, SERVICE_ICON } from '../icons';
 import { ANIMAL_LABEL, SERVICE_LABEL, SPECIALTY_LABEL } from '../data';
 import { useAppState } from '../lib/AdminContext';
-import { callPractice } from './ResultsScreen';
+import { callPractice, openRoute } from './ResultsScreen';
 
 const DAYS = ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'];
 
@@ -27,10 +28,10 @@ export default function DetailScreen({ route, navigation }) {
   const todayIdx = 2; // Mittwoch (Demo-"heute", passend zum Kalender 04.06.)
 
   return (
-    <ScrollView style={{ backgroundColor: C.surface2 }} contentContainerStyle={{ padding: S.s5, gap: S.s4, paddingBottom: S.s8 }}>
+    <ScrollView style={{ backgroundColor: C.surface2 }} contentContainerStyle={{ padding: S.s5, gap: S.s4, paddingBottom: S.s7 }}>
       <View>
         <H1>{p.name}</H1>
-        <Meta style={{ marginTop: 8 }}>📍 {p.district} · {p.address}</Meta>
+        <KV icon="pin" style={{ marginTop: 8 }}>{p.district} · {p.address}</KV>
         <View style={{ marginTop: 12 }}><StatusBadge status={p.status} size="lg" /></View>
         <View style={{ marginTop: 8 }}><ConfirmLine practice={p} /></View>
       </View>
@@ -53,24 +54,25 @@ export default function DetailScreen({ route, navigation }) {
 
       <Card>
         <SectionLabel style={{ marginBottom: 10 }}>Tierarten</SectionLabel>
-        <TagRow>{p.animals.map((a) => <Tag key={a} emoji={ANIMAL_EMOJI[a]}>{ANIMAL_LABEL[a]}</Tag>)}</TagRow>
+        <TagRow>{p.animals.map((a) => <Tag key={a} icon={ANIMAL_ICON[a]}>{ANIMAL_LABEL[a]}</Tag>)}</TagRow>
         <SectionLabel style={{ marginTop: 14, marginBottom: 10 }}>Leistungen</SectionLabel>
-        <TagRow>{p.services.map((s) => <Tag key={s} emoji={SERVICE_EMOJI[s]} accent>{SERVICE_LABEL[s]}</Tag>)}</TagRow>
+        <TagRow>{p.services.map((s) => <Tag key={s} icon={SERVICE_ICON[s]} accent>{SERVICE_LABEL[s]}</Tag>)}</TagRow>
         {p.specialties && p.specialties.length > 0 ? (
           <>
             <SectionLabel style={{ marginTop: 14, marginBottom: 10 }}>Spezialgebiete & Zusatzleistungen</SectionLabel>
-            <TagRow>{p.specialties.map((s) => <Tag key={s} emoji="➕">{SPECIALTY_LABEL[s] || s}</Tag>)}</TagRow>
+            <TagRow>{p.specialties.map((s) => <Tag key={s} icon="cross">{SPECIALTY_LABEL[s] || s}</Tag>)}</TagRow>
           </>
         ) : null}
       </Card>
 
       <Card>
         <SectionLabel style={{ marginBottom: 10 }}>Adresse</SectionLabel>
-        <Meta>📍 {p.address}</Meta>
+        <KV icon="pin">{p.address}</KV>
+        <Btn label="Route öffnen" icon="route" variant="secondary" block style={{ marginTop: 12 }} onPress={() => openRoute(p)} />
       </Card>
 
-      <Btn label="📞 Jetzt anrufen" size="lg" block onPress={() => callPractice(p)} />
-      <Btn label="✉️ Anfrage senden" variant="secondary" block onPress={() => navigation.navigate('Request', { practiceId: p.id })} />
+      <Btn label="Jetzt anrufen" icon="phone" size="lg" block onPress={() => callPractice(p)} />
+      <Btn label="Anfrage senden" icon="send" variant="secondary" block onPress={() => navigation.navigate('Request', { practiceId: p.id })} />
     </ScrollView>
   );
 }

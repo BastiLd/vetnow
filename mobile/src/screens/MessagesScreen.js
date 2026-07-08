@@ -3,10 +3,10 @@ import React from 'react';
 import { View, ScrollView } from 'react-native';
 import { C, S } from '../theme';
 import { Card, H2, P } from '../components';
-import ChatView, { ChatDisclaimer } from '../Chat';
+import ConvoList, { ChatDisclaimer } from '../ConvoList';
 import { useAppState } from '../lib/AdminContext';
 
-export default function MessagesScreen() {
+export default function MessagesScreen({ navigation }) {
   const { data } = useAppState();
   const convos = data.OWNER_CONVERSATIONS;
   return (
@@ -19,7 +19,7 @@ export default function MessagesScreen() {
       {convos.length === 0 ? (
         <Card style={{ alignItems: 'center' }}><P>Noch keine Nachrichten vorhanden.</P></Card>
       ) : (
-        <ChatView convos={convos} me="owner" feedback />
+        <ConvoList kind="owner" convos={convos} navigation={navigation} feedback />
       )}
     </ScrollView>
   );

@@ -1,8 +1,9 @@
 /* Admin: Login + Schalter "Testdaten ausblenden" (AsyncStorage, nur dieses Gerät) */
 import React from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { View, ScrollView, StyleSheet } from 'react-native';
 import { C, S } from '../theme';
-import { Card, SectionLabel, Notice, Btn, Field, Input, SwitchRow, H2, P, Meta } from '../components';
+import { Card, Notice, Btn, Field, Input, SwitchRow, H2, P, Meta, toast } from '../components';
+import { VNIcon } from '../icons';
 import { checkAdminLogin } from '../lib/admin';
 import { useAppState } from '../lib/AdminContext';
 import { PRACTICES, CONVERSATIONS, OWNER_CONVERSATIONS } from '../data';
@@ -18,10 +19,10 @@ export default function AdminScreen({ navigation }) {
 
   if (!adminLoggedIn) {
     return (
-      <ScrollView style={{ backgroundColor: C.surface2 }} contentContainerStyle={{ padding: S.s5 }}>
+      <ScrollView style={{ backgroundColor: C.surface2 }} contentContainerStyle={{ padding: S.s5 }} automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled">
         <Card>
           <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center', marginBottom: 14 }}>
-            <Text style={{ fontSize: 22 }}>🔒</Text>
+            <View style={st.lockIc}><VNIcon.lock s={20} c={C.teal700} /></View>
             <View>
               <H2>Admin-Login</H2>
               <Meta>Nur für Betreiber:innen der Plattform.</Meta>
@@ -35,8 +36,8 @@ export default function AdminScreen({ navigation }) {
               <Input value={pw} onChangeText={setPw} placeholder="••••••••" secureTextEntry hasError={!!err} />
             </Field>
             <Btn label="Anmelden" size="lg" block onPress={() => {
-              if (checkAdminLogin(user.trim(), pw)) { setErr(''); setAdminLoggedIn(true); }
-              else setErr('Benutzername oder Passwort falsch.');
+              if (checkAdminLogin(user.trim(), pw)) { setErr(''); setAdminLoggedIn(true); toast('Als Admin angemeldet.', 'success'); }
+              else { setErr('Benutzername oder Passwort falsch.'); toast('Login fehlgeschlagen.', 'error'); }
             }} />
           </View>
         </Card>
@@ -55,7 +56,7 @@ export default function AdminScreen({ navigation }) {
         title="Testdaten ausblenden"
         sub={`Blendet alle Demo-Einträge aus (${testCount} Praxen, ${chatCount} Konversationen samt Demo-Terminen).`}
         on={hideTestData}
-        onToggle={setHideTestData}
+        onToggle={(v) => { setHideTestData(v); toast(v ? 'Testdaten werden ausgeblendet.' : 'Testdaten werden wieder angezeigt.', 'success'); }}
       />
 
       <Notice type="info">
@@ -66,11 +67,13 @@ export default function AdminScreen({ navigation }) {
       <Notice type="warn">Zugangsdaten sind im Code hinterlegt (src/lib/admin.js) — nach dem Testen ändern!</Notice>
 
       <View style={{ flexDirection: 'row', gap: 8 }}>
-        <Btn label="Abmelden" variant="secondary" style={{ flex: 1 }} onPress={() => setAdminLoggedIn(false)} />
-        <Btn label="Zur Startseite" style={{ flex: 1 }} onPress={() => navigation.navigate('Home')} />
+        <Btn label="Abmelden" icon="logout" variant="secondary" style={{ flex: 1 }} onPress={() => { setAdminLoggedIn(false); toast('Abgemeldet.', 'info'); }} />
+        <Btn label="Zur Startseite" style={{ flex: 1 }} onPress={() => navigation.goBack()} />
       </View>
     </ScrollView>
   );
 }
 
-const st = StyleSheet.create({});
+const st = StyleSheet.create({
+  lockIc: { width: 42, height: 42, borderRadius: 12, backgroundColor: C.teal50, alignItems: 'center', justifyContent: 'center' },
+});

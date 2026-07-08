@@ -1,8 +1,9 @@
 /* Anfrage senden: Formular mit Validierung + Bestätigungsansicht */
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { C, S } from '../theme';
-import { Card, SectionLabel, Notice, Btn, Field, Input, ChoiceGrid, H2, P, Meta, ANIMAL_EMOJI, SERVICE_EMOJI } from '../components';
+import { Card, Notice, Btn, Field, Input, ChoiceGrid, H2, P, toast } from '../components';
+import { VNIcon, ANIMAL_ICON, SERVICE_ICON } from '../icons';
 import { ANIMALS, SITUATIONS, DISTRICTS } from '../data';
 import { useAppState } from '../lib/AdminContext';
 import { callPractice } from './ResultsScreen';
@@ -30,20 +31,21 @@ export default function RequestScreen({ route, navigation }) {
     else if ((form.phone.match(/\d/g) || []).length < 6) e.phone = 'Bitte gültige Telefonnummer eingeben (für den Rückruf der Praxis).';
     if (!form.agree) e.agree = 'Bitte bestätigen Sie den Hinweis.';
     setErr(e);
-    if (Object.keys(e).length === 0) setSent(true);
+    if (Object.keys(e).length === 0) { setSent(true); toast('Anfrage übermittelt.', 'success'); }
+    else toast('Bitte prüfen Sie die markierten Felder.', 'error');
   };
 
   if (sent) {
     return (
       <ScrollView style={{ backgroundColor: C.surface2 }} contentContainerStyle={{ padding: S.s5 }}>
         <Card style={{ alignItems: 'center', paddingVertical: 32 }}>
-          <Text style={{ fontSize: 40 }}>✅</Text>
+          <View style={st.okIcon}><VNIcon.check s={30} c={C.green} /></View>
           <H2 style={{ marginTop: 10 }}>Vielen Dank!</H2>
           <P style={{ marginTop: 8, textAlign: 'center' }}>
             Ihre Anfrage{p ? ' an ' + p.name : ''} wurde übermittelt. <Text style={{ fontWeight: '700' }}>Bei akuten Notfällen nehmen Sie bitte zusätzlich telefonisch Kontakt auf</Text> — eine Anfrage ersetzt keinen Anruf.
           </P>
           <View style={{ gap: 8, marginTop: 20, alignSelf: 'stretch' }}>
-            {p ? <Btn label={'📞 ' + p.name + ' anrufen'} block onPress={() => callPractice(p)} /> : null}
+            {p ? <Btn label={p.name + ' anrufen'} icon="phone" block onPress={() => callPractice(p)} /> : null}
             <Btn label="Zurück zu den Ergebnissen" variant="secondary" block onPress={() => navigation.navigate('Results')} />
           </View>
         </Card>
@@ -52,8 +54,12 @@ export default function RequestScreen({ route, navigation }) {
   }
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView style={{ backgroundColor: C.surface2 }} contentContainerStyle={{ padding: S.s5, gap: S.s4, paddingBottom: S.s8 }}>
+    <ScrollView
+      style={{ backgroundColor: C.surface2 }}
+      contentContainerStyle={{ padding: S.s5, gap: S.s4, paddingBottom: S.s8 }}
+      automaticallyAdjustKeyboardInsets
+      keyboardShouldPersistTaps="handled"
+    >
         <View>
           <H2>Anfrage senden</H2>
           <P style={{ marginTop: 5 }}>
@@ -73,10 +79,10 @@ export default function RequestScreen({ route, navigation }) {
           <Input value={form.phone} onChangeText={(v) => set('phone', v)} placeholder="+43 …" keyboardType="phone-pad" hasError={!!err.phone} />
         </Field>
         <Field label="Tierart">
-          <ChoiceGrid options={ANIMALS.map((a) => ({ ...a, emoji: ANIMAL_EMOJI[a.key] }))} value={form.animal} onChange={(v) => set('animal', v)} />
+          <ChoiceGrid options={ANIMALS.map((a) => ({ ...a, icon: ANIMAL_ICON[a.key] }))} value={form.animal} onChange={(v) => set('animal', v)} />
         </Field>
         <Field label="Situation">
-          <ChoiceGrid options={SITUATIONS.map((s) => ({ ...s, emoji: SERVICE_EMOJI[s.key] }))} value={form.situation} onChange={(v) => set('situation', v)} />
+          <ChoiceGrid options={SITUATIONS.map((s) => ({ ...s, icon: SERVICE_ICON[s.key] }))} value={form.situation} onChange={(v) => set('situation', v)} />
         </Field>
         <Field label="Bezirk / Ort">
           <ChoiceGrid options={DISTRICTS.map((d) => ({ key: d, label: d }))} value={form.district} onChange={(v) => set('district', v)} />
@@ -86,18 +92,18 @@ export default function RequestScreen({ route, navigation }) {
         </Field>
 
         <TouchableOpacity style={st.agreeRow} onPress={() => set('agree', !form.agree)} activeOpacity={0.7}>
-          <View style={[st.box, form.agree && st.boxOn]}>{form.agree ? <Text style={{ color: '#fff', fontWeight: '800', fontSize: 12 }}>✓</Text> : null}</View>
+          <View style={[st.box, form.agree && st.boxOn]}>{form.agree ? <VNIcon.check s={13} c="#fff" /> : null}</View>
           <Text style={st.agreeText}>Ich verstehe, dass dies keine medizinische Beratung ersetzt und ich bei akuten Notfällen zusätzlich telefonisch Kontakt aufnehmen muss.</Text>
         </TouchableOpacity>
-        {err.agree ? <Text style={{ color: C.redInk, fontSize: 12.5 }}>⚠️ {err.agree}</Text> : null}
+        {err.agree ? <Text style={{ color: C.redInk, fontSize: 12.5 }}>⚠ {err.agree}</Text> : null}
 
-        <Btn label="✉️ Anfrage senden" size="lg" block onPress={submit} />
-      </ScrollView>
-    </KeyboardAvoidingView>
+        <Btn label="Anfrage senden" icon="send" size="lg" block onPress={submit} />
+    </ScrollView>
   );
 }
 
 const st = StyleSheet.create({
+  okIcon: { width: 64, height: 64, borderRadius: 32, backgroundColor: C.greenBg, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
   agreeRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
   box: { width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, borderColor: C.line, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center', marginTop: 2 },
   boxOn: { backgroundColor: C.teal600, borderColor: C.teal600 },

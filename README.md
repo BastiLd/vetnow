@@ -38,6 +38,20 @@ npx expo start   # QR-Code mit der iPhone-Kamera scannen (Expo Go nötig)
 
 Voraussetzungen: kostenlose **Expo Go**-App aus dem App Store; PC und iPhone im
 selben WLAN. Kein Apple Developer Account, kein Mac nötig.
+Hinweis: Das Projekt läuft auf **Expo SDK 54** (passend zur Expo-Go-Version im App Store).
+
+### Ohne Laptop: Expo-Server auf dem Heimserver (ZimaOS/Docker)
+
+`docker-compose.yml` im Repo-Root startet den Expo-Server dauerhaft auf einem
+Server im Heimnetz (klont das Repo selbst und zieht bei jedem Neustart den
+neuesten Stand von GitHub):
+
+1. In der Compose-Datei `REACT_NATIVE_PACKAGER_HOSTNAME` auf die LAN-IP des
+   Servers setzen (z. B. `192.168.68.50`).
+2. Auf dem Server: `docker compose up -d` (erster Start dauert ein paar
+   Minuten wegen `npm ci`).
+3. iPhone (gleiches WLAN): Expo Go öffnen → **„Enter URL manually"** →
+   `exp://SERVER-IP:8081` → verbinden.
 
 ## Admin-Bereich
 

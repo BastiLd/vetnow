@@ -2,7 +2,8 @@
 import React from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { C, S } from '../theme';
-import { SectionLabel, ChoiceGrid, SwitchRow, Btn, H2, P, Meta, ANIMAL_EMOJI, SERVICE_EMOJI } from '../components';
+import { SectionLabel, ChoiceGrid, SwitchRow, Btn, H2, P, Meta } from '../components';
+import { ANIMAL_ICON, SERVICE_ICON } from '../icons';
 import { ANIMALS, SITUATIONS, DISTRICTS, SPECIALTIES } from '../data';
 import { useAppState } from '../lib/AdminContext';
 
@@ -10,8 +11,8 @@ export default function SearchScreen({ navigation }) {
   const { filters, setFilters } = useAppState();
   const set = (k, v) => setFilters({ ...filters, [k]: v });
 
-  const animalOpts = ANIMALS.map((a) => ({ ...a, emoji: ANIMAL_EMOJI[a.key] }));
-  const sitOpts = SITUATIONS.map((s) => ({ ...s, emoji: SERVICE_EMOJI[s.key] }));
+  const animalOpts = ANIMALS.map((a) => ({ ...a, icon: ANIMAL_ICON[a.key] }));
+  const sitOpts = SITUATIONS.map((s) => ({ ...s, icon: SERVICE_ICON[s.key] }));
   const distOpts = DISTRICTS.map((d) => ({ key: d, label: d }));
 
   const steps = [!!filters.animal, !!filters.situation, !!filters.district, !!(filters.specialties && filters.specialties.length)];

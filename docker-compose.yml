@@ -1,0 +1,34 @@
+# VetNow — Expo-Server dauerhaft auf einem Heimserver (z. B. ZimaOS) betreiben.
+#
+# WICHTIG: Unten die IP-Adresse deines Servers eintragen (SERVER_IP)!
+#
+# Der Container klont dieses Repo selbst von GitHub (bzw. zieht bei jedem
+# Neustart den neuesten Stand), installiert die Abhängigkeiten und startet
+# den Expo/Metro-Server auf Port 8081. Danach am iPhone in Expo Go:
+#   "Enter URL manually"  ->  exp://SERVER_IP:8081
+# PC/Laptop kann aus bleiben — nur der Server muss laufen.
+services:
+  vetnow-expo:
+    image: node:22-bookworm
+    container_name: vetnow-expo
+    environment:
+      # >>> HIER die LAN-IP deines ZimaOS-Servers eintragen (z. B. 192.168.68.50) <<<
+      REACT_NATIVE_PACKAGER_HOSTNAME: "192.168.68.50"
+      EXPO_NO_TELEMETRY: "1"
+      CI: "1"
+    command: >
+      bash -c "
+      if [ ! -d /repo/.git ]; then git clone https://github.com/BastiLd/vetnow.git /repo;
+      else cd /repo && git pull --ff-only || true; fi &&
+      cd /repo/mobile &&
+      npm ci &&
+      npx expo start --port 8081
+      "
+    ports:
+      - "8081:8081"
+    volumes:
+      - vetnow-repo:/repo
+    restart: unless-stopped
+
+volumes:
+  vetnow-repo:
