@@ -14,7 +14,17 @@ Vier Bausteine, gleicher Funktionsumfang, gleiche Testdaten:
 | `extension/` | Chrome-Extension (Praxis-Popup) | Manifest V3, vanilla JS |
 | `studio/`    | Control-Panel (bauen/previewen/starten, gruppierbar) | Node/Express, Docker |
 
-**Live:** https://bastild.github.io/vetnow/
+**Live (saubere Version, ohne Testdaten):** https://bastild.github.io/vetnow/
+
+### Zwei Versionen
+
+- **Sauber** (`VITE_VN_CLEAN=true`): keine Testdaten — leer, zum Weitergeben an
+  Tester:innen. Das ist die öffentliche GitHub-Pages-Seite. Supabase lässt sich
+  später ohne großen Umbau anbinden (Seam in [web/src/lib/backend.js](web/src/lib/backend.js)).
+- **Demo** (ohne Flag): mit allen Testdaten (18 Praxen, vorgefertigte Chats) zum
+  Vorführen. Läuft lokal (`npm run dev`) und im Studio unter `/vetnow-demo/`.
+
+Beide sind im **VetNow Studio** getrennt baubar/previewbar.
 
 ### Chat-System (Web + Mobile)
 
