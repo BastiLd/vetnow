@@ -5,6 +5,7 @@ import React from 'react';
 import { renderToString } from 'react-dom/server';
 import App from '../src/App.jsx';
 import { AdminProvider } from '../src/lib/adminContext.jsx';
+import { ChatProvider } from '../src/lib/chats.jsx';
 
 const SCREENS = ['home','search','results','detail','request','dashboard','owner-messages','auth','login','register-owner','register-clinic','extension','admin'];
 
@@ -13,7 +14,9 @@ for (const s of SCREENS) {
   try {
     const html = renderToString(
       <AdminProvider>
-        <App initialScreen={s} initialId={s === 'detail' ? 'drautal' : undefined} />
+        <ChatProvider>
+          <App initialScreen={s} initialId={s === 'detail' ? 'drautal' : undefined} />
+        </ChatProvider>
       </AdminProvider>
     );
     if (!html || html.length < 100) throw new Error('leere Ausgabe');

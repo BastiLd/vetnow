@@ -2,13 +2,15 @@
 import React from 'react';
 import { VNIcon, AccountChip, ToastHost } from './components.jsx';
 import { useVNData } from './lib/adminContext.jsx';
+import { useChats } from './lib/chats.jsx';
 import { ScreenHome, ScreenSearch } from './screens-a.jsx';
 import { ScreenResults, ScreenDetail } from './screens-b.jsx';
 import { ScreenRequest } from './screens-c.jsx';
 import { ScreenAuth, ScreenLogin, ScreenRegisterOwner, ScreenRegisterClinic } from './screens-d.jsx';
-import { ScreenDashboard, ScreenOwnerMessages } from './screens-e.jsx';
+import { ScreenDashboard } from './screens-e.jsx';
 import { ScreenExtension } from './screens-ext.jsx';
 import { ScreenAdmin } from './screens-admin.jsx';
+import { ScreenChats } from './screens-chats.jsx';
 
 const SCREEN_META = {
   home:      { title: '', back: null },
@@ -17,10 +19,11 @@ const SCREEN_META = {
   detail:    { title: 'Praxis-Details', back: 'results' },
   request:   { title: 'Anfrage senden', back: 'detail' },
   dashboard: { title: 'Praxis-Dashboard', back: 'home' },
-  'owner-messages': { title: 'Meine Nachrichten', back: 'home' },
+  'owner-messages': { title: 'Chats', back: 'home' },
+  extension: { title: 'Extension-Vorschau', back: 'home' },
   admin:     { title: 'Admin', back: 'home' },
 };
-const CHROMELESS = ['auth', 'login', 'register-owner', 'register-clinic', 'extension'];
+const CHROMELESS = ['auth', 'login', 'register-owner', 'register-clinic'];
 
 function Brand() {
   return (
@@ -63,10 +66,10 @@ function TopBar({ route, nav, auth }) {
 }
 
 function MobileTabBar({ route, nav, auth }) {
-  const D = useVNData();
+  const { totalUnread } = useChats();
   const n = route.name;
   const searchActive = ['search', 'results', 'detail', 'request'].includes(n);
-  const unread = (D.CONVERSATIONS || []).reduce((a, c) => a + c.unread, 0);
+  const unread = totalUnread;
   const accountTarget = auth && auth.role ? (auth.role === 'clinic' ? 'dashboard' : 'owner-messages') : 'auth';
   const tabs = [
     { key: 'home', label: 'Start', icon: 'home', active: n === 'home', go: 'home' },
@@ -104,8 +107,9 @@ function LegalFooter({ nav }) {
           <li>Nur aktiv bestätigte Praxen werden als aktuell erreichbar markiert.</li>
           <li><strong>Bei lebensbedrohlichen Notfällen sofort anrufen.</strong></li>
         </ul>
-        <div style={{ marginTop: 10 }}>
+        <div className="row gap-3" style={{ marginTop: 10 }}>
           <a className="link" style={{ color: 'var(--ink-3)', fontSize: 12.5, cursor: 'pointer' }} onClick={() => nav('admin')}>Admin</a>
+          <a className="link" style={{ color: 'var(--ink-3)', fontSize: 12.5, cursor: 'pointer' }} onClick={() => nav('extension')}>Extension-Vorschau</a>
         </div>
       </div>
     </footer>
@@ -134,7 +138,7 @@ export default function App({ initialScreen, initialId }) {
     case 'detail':    screen = <ScreenDetail nav={nav} practiceId={route.practiceId} />; break;
     case 'request':   screen = <ScreenRequest nav={nav} filters={filters} practiceId={route.practiceId} auth={auth} />; break;
     case 'dashboard': screen = <ScreenDashboard nav={nav} />; break;
-    case 'owner-messages': screen = <ScreenOwnerMessages />; break;
+    case 'owner-messages': screen = <ScreenChats />; break;
     case 'auth':      screen = <ScreenAuth nav={nav} />; break;
     case 'login':     screen = <ScreenLogin nav={nav} setAuth={setAuth} />; break;
     case 'register-owner':  screen = <ScreenRegisterOwner nav={nav} setAuth={setAuth} />; break;

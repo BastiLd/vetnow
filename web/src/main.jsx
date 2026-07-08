@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import { AdminProvider } from './lib/adminContext.jsx';
+import { ChatProvider } from './lib/chats.jsx';
 import './base.css';
 import './redesign.css';
 
@@ -26,7 +27,9 @@ const { screen, id } = initialRoute();
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <AdminProvider>
-      <App initialScreen={screen} initialId={id} />
+      <ChatProvider>
+        <App initialScreen={screen} initialId={id} />
+      </ChatProvider>
     </AdminProvider>
   </React.StrictMode>
 );

@@ -108,6 +108,126 @@ export const PRACTICES = [
     services: ['regular','emergency'],
     ageHours: 72,
   },
+  {
+    id: 'klagenfurt-zentrum', name: 'Tierklinik Klagenfurt Zentrum', district: 'Klagenfurt', isTestData: true,
+    specialties: ['chirurgie','neuro','onko','augen'],
+    address: 'Bahnhofstraße 22, 9020 Klagenfurt', phone: '+43 000 000000',
+    status: 'green', confirmedAt: 'heute, 07:50', hoursShort: 'Mo–Sa 7–20',
+    hoursWeek: ['7–20','7–20','7–20','7–20','7–20','8–16','geschlossen'],
+    emergency: 'Nimmt heute Notfälle an, eigenes Labor & OP',
+    emergencyLong: 'Große Tierklinik mit eigenem Labor, Röntgen und OP-Bereich. Notfälle werden heute durchgehend angenommen, bitte kurz telefonisch ankündigen.',
+    animals: ['cat','dog','small','exotic'],
+    services: ['emergency','regular','euthanasia'],
+    ageHours: 1,
+  },
+  {
+    id: 'ossiach', name: 'Tierpraxis Ossiacher See', district: 'Villach', isTestData: true,
+    specialties: ['haut','zahn'],
+    address: 'Seeuferweg 9, 9570 Ossiach', phone: '+43 000 000000',
+    status: 'green', confirmedAt: 'heute, 09:20', hoursShort: 'Mo–Fr 8–17',
+    hoursWeek: ['8–17','8–17','8–17','8–17','8–17','geschlossen','geschlossen'],
+    emergency: 'Nimmt heute Notfälle an',
+    emergencyLong: 'Familiäre Praxis am Ossiacher See, nimmt heute Notfälle an und bietet Hausbesuche in der Umgebung.',
+    animals: ['cat','dog','small'],
+    services: ['emergency','regular','housecall'],
+    ageHours: 2,
+  },
+  {
+    id: 'millstatt', name: 'Kleintierpraxis Millstätter See', district: 'Spittal', isTestData: true,
+    specialties: ['zahn','ortho'],
+    address: 'Seemühlgasse 3, 9872 Millstatt', phone: '+43 000 000000',
+    status: 'yellow', confirmedAt: 'heute, 10:05', hoursShort: 'Mo–Fr 8–16',
+    hoursWeek: ['8–16','8–16','8–16','8–16','8–16','geschlossen','geschlossen'],
+    emergency: 'Notfälle nur nach telefonischer Rücksprache',
+    emergencyLong: 'Notfälle werden heute nur nach vorheriger telefonischer Rücksprache angenommen. Bitte zuerst anrufen.',
+    animals: ['cat','dog','small'],
+    services: ['regular','emergency'],
+    ageHours: 1,
+  },
+  {
+    id: 'koralpe', name: 'Tierarzt Koralpe', district: 'Wolfsberg', isTestData: true,
+    specialties: ['ortho','chirurgie'],
+    address: 'Koralmstraße 44, 9400 Wolfsberg', phone: '+43 000 000000',
+    status: 'green', confirmedAt: 'heute, 08:00', hoursShort: 'Mo–Fr 7–17',
+    hoursWeek: ['7–17','7–17','7–17','7–17','7–17','8–12','geschlossen'],
+    emergency: 'Nimmt heute Notfälle an, auch Großtiere',
+    emergencyLong: 'Landtierärztliche Praxis, betreut Klein- und Großtiere. Notfälle werden heute angenommen, Hausbesuche im Lavanttal möglich.',
+    animals: ['cat','dog','horse','small'],
+    services: ['emergency','regular','housecall'],
+    ageHours: 3,
+  },
+  {
+    id: 'gurktal', name: 'Vetzentrum Gurktal', district: 'St. Veit', isTestData: true,
+    specialties: ['herz','neuro','zahn'],
+    address: 'Gurkstraße 7, 9342 Gurk', phone: '+43 000 000000',
+    status: 'green', confirmedAt: 'heute, 09:45', hoursShort: 'Mo–Fr 8–18',
+    hoursWeek: ['8–18','8–18','8–18','8–18','8–18','9–13','geschlossen'],
+    emergency: 'Nimmt heute Notfälle an',
+    emergencyLong: 'Modernes Vetzentrum mit Kardiologie-Schwerpunkt. Notfälle werden heute angenommen.',
+    animals: ['cat','dog','small','bird'],
+    services: ['emergency','regular','euthanasia','housecall'],
+    ageHours: 1,
+  },
+  {
+    id: 'klopein', name: 'Tierpraxis Klopeiner See', district: 'Völkermarkt', isTestData: true,
+    specialties: ['haut','exoten'],
+    address: 'Seestraße 15, 9122 St. Kanzian', phone: '+43 000 000000',
+    status: 'red', confirmedAt: 'heute, 06:30', hoursShort: 'Mo–Fr 9–16',
+    hoursWeek: ['9–16','9–16','9–16','9–16','9–16','geschlossen','geschlossen'],
+    emergency: 'Heute keine Notfälle – bitte Tierklinik Klagenfurt kontaktieren',
+    emergencyLong: 'Diese Praxis nimmt heute keine Notfälle an. Bitte im Notfall an die Tierklinik Klagenfurt Zentrum wenden.',
+    animals: ['cat','small','exotic','bird'],
+    services: ['regular'],
+    ageHours: 5,
+  },
+  {
+    id: 'nassfeld', name: 'Bergtierarzt Nassfeld', district: 'Hermagor', isTestData: true,
+    specialties: ['ortho'],
+    address: 'Nassfeldstraße 88, 9620 Hermagor', phone: '+43 000 000000',
+    status: 'yellow', confirmedAt: 'heute, 08:40', hoursShort: 'Mo–Fr 8–15',
+    hoursWeek: ['8–15','8–15','8–15','8–15','8–15','geschlossen','geschlossen'],
+    emergency: 'Eingeschränkt – bitte vorher anrufen',
+    emergencyLong: 'Heute nur eingeschränkt erreichbar (Bergregion). Bitte vor einem Besuch telefonisch Kontakt aufnehmen.',
+    animals: ['dog','cat','horse'],
+    services: ['regular','housecall'],
+    ageHours: 2,
+  },
+  {
+    id: 'viktring', name: 'Pferdeklinik Viktring', district: 'Klagenfurt', isTestData: true,
+    specialties: ['ortho','chirurgie'],
+    address: 'Stiftweg 5, 9073 Klagenfurt-Viktring', phone: '+43 000 000000',
+    status: 'green', confirmedAt: 'heute, 07:05', hoursShort: 'Mo–Sa 7–19',
+    hoursWeek: ['7–19','7–19','7–19','7–19','7–19','7–15','Notdienst'],
+    emergency: '24h Pferde-Notdienst, mobile Einsätze',
+    emergencyLong: 'Spezialklinik für Pferde mit mobilem Notdienst in ganz Kärnten. Bei Kolik oder Verletzungen sofort anrufen.',
+    animals: ['horse'],
+    services: ['emergency','regular','euthanasia','housecall'],
+    ageHours: 1,
+  },
+  {
+    id: 'faak', name: 'Tierarzt Faaker See', district: 'Villach', isTestData: true,
+    specialties: ['zahn','augen'],
+    address: 'Seepromenade 21, 9583 Faak am See', phone: '+43 000 000000',
+    status: 'grey', confirmedAt: 'vor 2 Tagen', hoursShort: 'Mo–Fr 9–17',
+    hoursWeek: ['9–17','9–17','9–17','9–17','9–17','geschlossen','geschlossen'],
+    emergency: 'Status nicht aktuell bestätigt – bitte unbedingt telefonisch prüfen.',
+    emergencyLong: 'Der Status dieser Praxis wurde seit über 24 Stunden nicht bestätigt. Bitte telefonisch prüfen, ob heute Notfälle angenommen werden.',
+    animals: ['cat','dog','small'],
+    services: ['regular','emergency'],
+    ageHours: 40,
+  },
+  {
+    id: 'maria-saal', name: 'Tierarztpraxis Maria Saal', district: 'Klagenfurt', isTestData: true,
+    specialties: ['zahn','haut','exoten'],
+    address: 'Domplatz 2, 9063 Maria Saal', phone: '+43 000 000000',
+    status: 'green', confirmedAt: 'heute, 09:10', hoursShort: 'Mo–Fr 8–17',
+    hoursWeek: ['8–17','8–17','8–17','8–17','8–17','9–12','geschlossen'],
+    emergency: 'Nimmt heute Notfälle an',
+    emergencyLong: 'Freundliche Praxis nördlich von Klagenfurt. Notfälle werden heute angenommen, Schwerpunkt auf Zahn- und Hautbehandlungen.',
+    animals: ['cat','dog','small','exotic'],
+    services: ['emergency','regular','housecall'],
+    ageHours: 2,
+  },
 ];
 
 export const ANIMAL_LABEL = { cat: 'Katze', dog: 'Hund', small: 'Kleintiere', horse: 'Pferd', bird: 'Vogel', exotic: 'Reptilien/Exoten', other: 'Anderes' };
@@ -302,6 +422,120 @@ export const CLINIC_PROFILE = {
   ],
   notifications: { email: true, push: true, desktop: false, extension: true },
 };
+
+// ============================================================
+//  CHAT-SYSTEM — freie Chats mit Labels, Farben & Icons.
+//  Labels sind frei editierbar; role ist nur die Standard-Kategorie.
+//  role: 'owner'   = Meine Tiere (Chat mit Praxen zu meinen Tieren)
+//        'clinic'  = Praxis-Posteingang (Anfragen, die ich ALS Praxis bekomme)
+//        'network' = Praxis-Netzwerk (Chats zwischen Praxen)
+// ============================================================
+export const CHAT_LABELS_SEED = [
+  { id: 'tiere',       name: 'Meine Tiere',        color: '#0f9b8e', icon: 'paw2',     seed: true },
+  { id: 'posteingang', name: 'Praxis-Posteingang', color: '#2e6f9e', icon: 'building', seed: true },
+  { id: 'netzwerk',    name: 'Praxis-Netzwerk',    color: '#8a5d05', icon: 'shield',   seed: true },
+  { id: 'notfall',     name: 'Notfall',            color: '#dc2626', icon: 'siren',    seed: true },
+  { id: 'termin',      name: 'Termin',             color: '#16a34a', icon: 'cal',      seed: true },
+  { id: 'erledigt',    name: 'Erledigt',           color: '#6c7d79', icon: 'check',    seed: true },
+];
+
+export const CHATS_SEED = [
+  // ---- Meine Tiere (owner) ----
+  {
+    id: 'ch-o1', role: 'owner', title: 'Tierarztpraxis Drautal', sub: 'Villach · Balu (Hund)', animal: 'dog',
+    color: '#0f9b8e', icon: 'paw2', labels: ['tiere', 'erledigt'], pinned: true, unread: 1, isTestData: true,
+    messages: [
+      { from: 'owner', text: 'Guten Morgen, unser Hund Balu humpelt seit heute früh und frisst nicht. Können wir heute vorbeikommen?', time: '09:30' },
+      { from: 'clinic', text: 'Guten Morgen! Kommen Sie gerne um 08:30 vorbei, wir sehen ihn uns an.', time: '09:36' },
+      { type: 'note', text: 'Behandlung verlief gut. Leichte Zerrung — Balu sollte sich 3 Tage schonen, bitte weiter beobachten. Bei Verschlechterung bitte erneut melden.', time: 'heute, 11:20' },
+    ],
+  },
+  {
+    id: 'ch-o2', role: 'owner', title: 'Vetpraxis Feldkirchen', sub: 'Feldkirchen · Luna (Hund)', animal: 'dog',
+    color: '#0f9b8e', icon: 'dog', labels: ['tiere'], pinned: false, unread: 0, isTestData: true,
+    messages: [
+      { from: 'owner', text: 'Bietet ihr Hausbesuche im Raum Feldkirchen an?', time: 'Gestern 11:00' },
+      { from: 'clinic', text: 'Ja, gerne — am Nachmittag. Bitte rufen Sie kurz an, dann vereinbaren wir einen Zeitpunkt.', time: 'Gestern 11:20' },
+    ],
+  },
+  {
+    id: 'ch-o3', role: 'owner', title: 'Tiernotdienst Wörthersee 24h', sub: 'Klagenfurt · Mimi (Katze)', animal: 'cat',
+    color: '#dc2626', icon: 'siren', labels: ['tiere', 'notfall'], pinned: false, unread: 0, isTestData: true,
+    messages: [
+      { from: 'owner', text: 'Danke für die schnelle Hilfe gestern Nacht!', time: 'Mo 08:00' },
+      { from: 'clinic', text: 'Sehr gerne. Gute Besserung für Mimi!', time: 'Mo 08:15' },
+    ],
+  },
+  // ---- Praxis-Posteingang (clinic) ----
+  {
+    id: 'ch-c1', role: 'clinic', title: 'Familie Berger', sub: 'Balu (Hund) · Lahmheit', animal: 'dog',
+    color: '#dc2626', icon: 'siren', labels: ['posteingang', 'notfall'], pinned: true, unread: 2, isTestData: true,
+    messages: [
+      { from: 'owner', text: 'Guten Morgen, unser Hund Balu humpelt seit heute früh und frisst nicht. Können wir heute vorbeikommen?', time: '09:30' },
+      { from: 'clinic', text: 'Guten Morgen! Das klingt nach etwas, das wir uns ansehen sollten. Seit wann humpelt er genau?', time: '09:36' },
+      { from: 'owner', text: 'Seit dem Spaziergang heute früh, ca. 7 Uhr.', time: '09:40' },
+      { from: 'owner', text: 'Sollen wir sofort kommen?', time: '09:42' },
+    ],
+  },
+  {
+    id: 'ch-c2', role: 'clinic', title: 'Frau Wieser', sub: 'Mimi (Katze) · Jahresimpfung', animal: 'cat',
+    color: '#16a34a', icon: 'cal', labels: ['posteingang', 'termin'], pinned: false, unread: 0, isTestData: true,
+    messages: [
+      { from: 'owner', text: 'Hallo, meine Katze Mimi soll zur jährlichen Impfung. Haben Sie diese Woche einen Termin?', time: '08:05' },
+      { from: 'clinic', text: 'Gerne! Donnerstag um 14:30 wäre frei. Passt das?', time: '08:08' },
+      { from: 'owner', text: 'Perfekt, danke!', time: '08:10' },
+    ],
+  },
+  {
+    id: 'ch-c3', role: 'clinic', title: 'Herr Tomaschitz', sub: 'Hoppel (Kleintier) · Atemwege', animal: 'small',
+    color: '#2e6f9e', icon: 'building', labels: ['posteingang'], pinned: false, unread: 0, isTestData: true,
+    messages: [
+      { from: 'owner', text: 'Mein Kaninchen niest seit ein paar Tagen. Ist das dringend?', time: 'Gestern 16:20' },
+      { from: 'clinic', text: 'Beobachten Sie bitte, ob Nasenausfluss dazukommt. Wenn ja, bitte rasch vorbeikommen. Bei Atemnot sofort anrufen.', time: 'Gestern 16:45' },
+    ],
+  },
+  {
+    id: 'ch-c4', role: 'clinic', title: 'Familie Novak', sub: 'Rocky (Hund) · Nachkontrolle', animal: 'dog',
+    color: '#6c7d79', icon: 'check', labels: ['posteingang', 'erledigt'], pinned: false, unread: 0, isTestData: true,
+    messages: [
+      { from: 'owner', text: 'Danke für die schnelle Hilfe gestern Abend!', time: 'Mo 19:02' },
+      { from: 'clinic', text: 'Sehr gerne — gute Besserung für Rocky!', time: 'Mo 19:10' },
+    ],
+  },
+  // ---- Praxis-Netzwerk (network) ----
+  {
+    id: 'ch-n1', role: 'network', title: 'Tiernotdienst Wörthersee 24h', sub: 'Vertretung & Überweisung', animal: 'dog',
+    color: '#8a5d05', icon: 'shield', labels: ['netzwerk'], pinned: true, unread: 1, isTestData: true,
+    messages: [
+      { from: 'clinic', text: 'Servus Kolleg:innen! Können wir am Wochenende einen Notfall zu euch überweisen? Wir haben Betriebsurlaub.', time: 'Fr 14:10' },
+      { from: 'owner', text: 'Klar, kein Problem. Schickt uns kurz die Patientendaten vorab.', time: 'Fr 14:25' },
+    ],
+  },
+  {
+    id: 'ch-n2', role: 'network', title: 'Pferdeklinik Viktring', sub: 'Fachaustausch Orthopädie', animal: 'horse',
+    color: '#0f9b8e', icon: 'horse', labels: ['netzwerk'], pinned: false, unread: 0, isTestData: true,
+    messages: [
+      { from: 'clinic', text: 'Habt ihr Erfahrung mit dem neuen Sedierungsprotokoll bei Kolik-Patienten?', time: 'Mi 10:00' },
+      { from: 'owner', text: 'Ja, läuft bei uns sehr gut. Ich schick dir unser Schema per Mail.', time: 'Mi 10:20' },
+    ],
+  },
+];
+
+/* Standard-Einstellungen fürs Chat-System — alles einzeln abschaltbar. */
+export const CHAT_SETTINGS_DEFAULT = {
+  autoSeed: true,        // vorgefertigte Chats & Labels beim ersten Start anlegen
+  showLabels: true,      // Label-Chips & Filter anzeigen
+  enableOwner: true,     // Bereich "Meine Tiere"
+  enablePosteingang: true, // Bereich "Praxis-Posteingang"
+  enableNetwork: true,   // Bereich "Praxis-Netzwerk"
+  showPinned: true,      // angepinnte Chats oben
+};
+
+export const CHAT_ROLES = [
+  { key: 'owner',   label: 'Meine Tiere',        defaultLabel: 'tiere' },
+  { key: 'clinic',  label: 'Praxis-Posteingang', defaultLabel: 'posteingang' },
+  { key: 'network', label: 'Praxis-Netzwerk',    defaultLabel: 'netzwerk' },
+];
 
 /* Vollständiges Datenobjekt (gleiche Form wie window.VN_DATA im Prototyp).
    `buildVNData(hideTestData)` liefert eine gefilterte Sicht: Ist der
