@@ -71,25 +71,30 @@ Ordner `extension/` wählen. Details: [extension/README.md](extension/README.md)
 Ein Docker-Container mit Oberfläche, um alles zu **bauen, previewen, starten und
 zu gruppieren** — dauerhaft auf ZimaOS, Laptop kann aus sein.
 
-`docker-compose.yml` im Repo-Root startet Studio (klont das Repo selbst und
-zieht bei jedem Neustart den neuesten Stand):
+`docker-compose.yml` im Repo-Root startet Studio über ein **fertiges Image**
+(`ghcr.io/bastild/vetnow-studio`), das bei jedem Start selbst das neueste
+Repo klont/aktualisiert. Bewusst kein Mehrzeilen-Startbefehl in der Compose-
+Datei — ZimaOS/CasaOS' Compose-Importer verstümmelt solche Befehle beim
+Parsen (Zeilenumbrüche gehen verloren, siehe „Problembehebung" unten).
 
 1. In der Compose-Datei `HOST_IP` auf die LAN-IP des Servers setzen
    (dieselbe wie in der ZimaOS-Adressleiste, z. B. `192.168.68.10`).
 2. In ZimaOS: App Store → **„+"** → **„Install a customized app"** →
-   Compose importieren, Inhalt einfügen.
-3. **Wichtig:** Falls ZimaOS beim Import unter „Speicher" zwei leere
-   Host-Pfad-Felder anzeigt (Fehler beim Installieren: *„field Source must
-   not be empty"*), dort manuell eintragen:
-   `/DATA/AppData/vetnow-studio/repo` bzw. `/DATA/AppData/vetnow-studio/data`.
-   In der aktuellen `docker-compose.yml` sind diese Pfade bereits fest
-   hinterlegt — bei einem frischen Import sollte das nicht mehr nötig sein.
-4. Installieren. (Erster Start dauert einige Minuten.)
-5. Studio öffnen: **`http://SERVER-IP:3000`**
+   Compose importieren, Inhalt einfügen, installieren. (Erster Start dauert
+   einige Minuten — das Image muss geladen und das Repo geklont werden.)
+3. Studio öffnen: **`http://SERVER-IP:3000`**
    - Web-App **bauen** → **Handy-Vorschau** / **QR** / **Web öffnen**
    - iPhone-App: **Expo starten** → **QR (exp://)** in Expo Go scannen;
      **Expo-Version** jederzeit umschaltbar
    - Extension als **ZIP** herunterladen
+
+**Problembehebung „Dienst nicht verfügbar" / Container startet nicht:**
+Logs in ZimaOS/Portainer ansehen (Container `vetnow-studio` → Logs). Zeigt
+`fatal: repository '' does not exist` wiederholt → `REPO_URL` kam leer im
+Container an, meist weil eine ältere/manuell bearbeitete Compose-Version mit
+Mehrzeilen-Befehl importiert wurde. Fix: App entfernen, aktuelle
+`docker-compose.yml` von GitHub neu einfügen (nutzt das fertige Image, kein
+Mehrzeilen-Befehl mehr) und neu installieren.
 
 Mehr: [studio/README.md](studio/README.md).
 
