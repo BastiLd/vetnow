@@ -10,6 +10,12 @@
 #
 # WICHTIG: Unten HOST_IP auf die LAN-IP deines ZimaOS-Servers setzen
 # (dieselbe wie in der Adressleiste, z. B. 192.168.68.10).
+#
+# Hinweis: ZimaOS/CasaOS wandelt benannte Volumes beim Compose-Import in
+# Bind-Mounts um und braucht dafür feste Host-Pfade — deshalb werden hier
+# (statt benannter Volumes) direkt Ordner unter /DATA/AppData/ verwendet,
+# der Standard-Speicherort für App-Daten auf ZimaOS. Diese Ordner werden
+# beim ersten Start automatisch angelegt.
 services:
   vetnow-studio:
     image: node:22-bookworm
@@ -35,10 +41,6 @@ services:
       - "3000:3000"     # Studio-Oberfläche
       - "8081:8081"     # Expo/Metro (für Expo Go)
     volumes:
-      - vetnow-repo:/repo
-      - vetnow-data:/data
+      - /DATA/AppData/vetnow-studio/repo:/repo
+      - /DATA/AppData/vetnow-studio/data:/data
     restart: unless-stopped
-
-volumes:
-  vetnow-repo:
-  vetnow-data:

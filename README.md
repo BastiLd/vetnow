@@ -77,9 +77,15 @@ zieht bei jedem Neustart den neuesten Stand):
 1. In der Compose-Datei `HOST_IP` auf die LAN-IP des Servers setzen
    (dieselbe wie in der ZimaOS-Adressleiste, z. B. `192.168.68.10`).
 2. In ZimaOS: App Store → **„+"** → **„Install a customized app"** →
-   Compose importieren, Inhalt einfügen, installieren. (Erster Start dauert
-   einige Minuten.)
-3. Studio öffnen: **`http://SERVER-IP:3000`**
+   Compose importieren, Inhalt einfügen.
+3. **Wichtig:** Falls ZimaOS beim Import unter „Speicher" zwei leere
+   Host-Pfad-Felder anzeigt (Fehler beim Installieren: *„field Source must
+   not be empty"*), dort manuell eintragen:
+   `/DATA/AppData/vetnow-studio/repo` bzw. `/DATA/AppData/vetnow-studio/data`.
+   In der aktuellen `docker-compose.yml` sind diese Pfade bereits fest
+   hinterlegt — bei einem frischen Import sollte das nicht mehr nötig sein.
+4. Installieren. (Erster Start dauert einige Minuten.)
+5. Studio öffnen: **`http://SERVER-IP:3000`**
    - Web-App **bauen** → **Handy-Vorschau** / **QR** / **Web öffnen**
    - iPhone-App: **Expo starten** → **QR (exp://)** in Expo Go scannen;
      **Expo-Version** jederzeit umschaltbar
