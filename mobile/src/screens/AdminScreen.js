@@ -6,7 +6,7 @@ import { Card, Notice, Btn, Field, Input, SwitchRow, H2, P, Meta, toast } from '
 import { VNIcon } from '../icons';
 import { checkAdminLogin } from '../lib/admin';
 import { useAppState } from '../lib/AdminContext';
-import { PRACTICES, CONVERSATIONS, OWNER_CONVERSATIONS } from '../data';
+import { PRACTICES, CHATS_SEED } from '../data';
 
 export default function AdminScreen({ navigation }) {
   const { hideTestData, setHideTestData, adminLoggedIn, setAdminLoggedIn } = useAppState();
@@ -15,7 +15,7 @@ export default function AdminScreen({ navigation }) {
   const [err, setErr] = React.useState('');
 
   const testCount = PRACTICES.filter((p) => p.isTestData).length;
-  const chatCount = CONVERSATIONS.filter((c) => c.isTestData).length + OWNER_CONVERSATIONS.filter((c) => c.isTestData).length;
+  const chatCount = CHATS_SEED.filter((c) => c.isTestData).length;
 
   if (!adminLoggedIn) {
     return (

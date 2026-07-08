@@ -1,6 +1,6 @@
-/* Chat-Thread als eigener Screen (Root-Stack): Tastatur verdeckt nichts mehr —
-   KeyboardAvoidingView mit Header-Offset, Eingabezeile fix unten.
-   Mit Bild-Anhang (expo-image-picker), Abschlussnotizen und Sterne-Bewertung. */
+/* Chat-Thread als eigener Screen: Tastatur verdeckt nichts (KeyboardAvoidingView
+   mit Header-Offset), Bild-Anhang, Abschlussnotizen, Sterne-Bewertung.
+   Nutzt den neuen Chat-Store (useChats) über chatId. */
 import React from 'react';
 import { View, Text, TouchableOpacity, TextInput, ScrollView, Image, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 import { useHeaderHeight } from '@react-navigation/elements';
@@ -8,14 +8,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { C, R } from '../theme';
 import { Meta, StarRating, toast } from '../components';
-import { VNIcon, AnimalGlyph } from '../icons';
-import { useAppState } from '../lib/AdminContext';
+import { VNIcon } from '../icons';
+import { Glyph } from './ChatsScreen';
+import { useChats } from '../lib/ChatContext';
 
 export default function ChatThreadScreen({ route, navigation }) {
-  const { kind, convoId, title, sub, animal, feedback, quickReplies } = route.params;
-  const me = kind === 'owner' ? 'owner' : 'clinic';
-  const { ownerChats, clinicChats, sendChat, markRead } = useAppState();
-  const msgs = (kind === 'owner' ? ownerChats : clinicChats)[convoId] || [];
+  const { chatId, quickReplies } = route.params;
+  const { chatById, labels, addMessage, markRead } = useChats();
+  const chat = chatById(chatId);
+  const me = chat && chat.role === 'owner' ? 'owner' : 'clinic';
 
   const [draft, setDraft] = React.useState('');
   const [pendingImg, setPendingImg] = React.useState(null);
@@ -23,63 +24,64 @@ export default function ChatThreadScreen({ route, navigation }) {
   const headerHeight = useHeaderHeight();
   const insets = useSafeAreaInsets();
 
-  React.useEffect(() => { markRead(kind, convoId); }, [kind, convoId, markRead]);
-  React.useEffect(() => { navigation.setOptions({ title }); }, [navigation, title]);
+  React.useEffect(() => { if (chat) markRead(chatId); }, [chatId]);
+  React.useEffect(() => { if (chat) navigation.setOptions({ title: chat.title }); }, [chat && chat.title]);
+
+  if (!chat) {
+    return (
+      <View style={{ flex: 1, backgroundColor: C.surface2, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <Text style={{ color: C.ink3 }}>Dieser Chat ist nicht mehr verfügbar.</Text>
+      </View>
+    );
+  }
+
+  const msgs = chat.messages;
+  const chatLabels = (chat.labels || []).map((id) => labels.find((l) => l.id === id)).filter(Boolean);
 
   const send = (text) => {
     const t = (text != null ? text : draft).trim();
-    if (pendingImg && text == null) {
-      sendChat(kind, convoId, { from: me, type: 'image', src: pendingImg, text: t, time: 'jetzt' });
-      setPendingImg(null); setDraft('');
-      return;
-    }
+    if (pendingImg && text == null) { addMessage(chatId, { from: me, type: 'image', src: pendingImg, text: t, time: 'jetzt' }); setPendingImg(null); setDraft(''); return; }
     if (!t) return;
-    sendChat(kind, convoId, { from: me, text: t, time: 'jetzt' });
+    addMessage(chatId, { from: me, text: t, time: 'jetzt' });
     if (text == null) setDraft('');
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 60);
   };
 
   const pickImage = async () => {
     const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.6 });
-    if (!res.canceled && res.assets && res.assets[0]) {
-      setPendingImg(res.assets[0].uri);
-      toast('Bild bereit zum Senden.', 'info');
-    }
+    if (!res.canceled && res.assets && res.assets[0]) { setPendingImg(res.assets[0].uri); toast('Bild bereit zum Senden.', 'info'); }
   };
 
   const hasNote = msgs.some((m) => m.type === 'note');
   const last = msgs[msgs.length - 1];
   const lastIsOwnerReply = last && last.from === 'owner' && last.type !== 'note';
-  const showFeedback = feedback && me === 'owner' && hasNote && !lastIsOwnerReply;
+  const showFeedback = me === 'owner' && hasNote && !lastIsOwnerReply;
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: C.surface2 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={headerHeight}
-    >
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: C.surface2 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={headerHeight}>
       <View style={st.subHead}>
-        <View style={st.avatar}><AnimalGlyph animal={animal} s={18} c={C.teal700} /></View>
+        <View style={[st.avatar, { backgroundColor: chat.color + '22' }]}><Glyph name={chat.icon} s={18} c={chat.color} /></View>
         <View style={{ flex: 1 }}>
-          <Text style={st.name}>{title}</Text>
-          <Meta style={{ marginTop: 0 }}>{sub}</Meta>
+          <Text style={st.name}>{chat.title}</Text>
+          {chat.sub ? <Meta style={{ marginTop: 0 }}>{chat.sub}</Meta> : null}
+        </View>
+        <View style={{ flexDirection: 'row', gap: 5 }}>
+          {chatLabels.slice(0, 2).map((l) => (
+            <View key={l.id} style={{ backgroundColor: l.color + '22', borderRadius: R.pill, paddingVertical: 3, paddingHorizontal: 8 }}>
+              <Text style={{ color: l.color, fontSize: 10.5, fontWeight: '700' }}>{l.name}</Text>
+            </View>
+          ))}
         </View>
       </View>
 
-      <ScrollView
-        ref={scrollRef}
-        style={{ flex: 1 }}
-        contentContainerStyle={{ padding: 14, gap: 10 }}
-        onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
-        keyboardShouldPersistTaps="handled"
-      >
+      <ScrollView ref={scrollRef} style={{ flex: 1 }} contentContainerStyle={{ padding: 14, gap: 10 }}
+        onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })} keyboardShouldPersistTaps="handled">
+        {msgs.length === 0 ? <Text style={{ color: C.ink3, textAlign: 'center', marginTop: 30 }}>Schreibe die erste Nachricht.</Text> : null}
         {msgs.map((m, i) => {
           if (m.type === 'note') {
             return (
               <View key={i} style={st.note}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <VNIcon.note s={14} c={C.blueInk} />
-                  <Text style={st.noteLabel}>Abschlussnotiz der Praxis</Text>
-                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><VNIcon.note s={14} c={C.blueInk} /><Text style={st.noteLabel}>Abschlussnotiz der Praxis</Text></View>
                 <Text style={st.noteText}>{m.text}</Text>
                 <Meta>{m.time}</Meta>
               </View>
@@ -99,9 +101,7 @@ export default function ChatThreadScreen({ route, navigation }) {
           }
           return (
             <View key={i} style={{ alignItems: mine ? 'flex-end' : 'flex-start' }}>
-              <View style={[st.bubble, mine ? st.bubbleMe : st.bubbleOther]}>
-                <Text style={[st.bubbleText, mine && { color: '#fff' }]}>{m.text}</Text>
-              </View>
+              <View style={[st.bubble, mine ? st.bubbleMe : st.bubbleOther]}><Text style={[st.bubbleText, mine && { color: '#fff' }]}>{m.text}</Text></View>
               <Meta style={{ marginTop: 2 }}>{m.time}</Meta>
             </View>
           );
@@ -111,20 +111,14 @@ export default function ChatThreadScreen({ route, navigation }) {
       {showFeedback ? (
         <View style={st.quickBar}>
           <Meta style={{ fontWeight: '700', marginTop: 0 }}>Rückmeldung:</Meta>
-          <TouchableOpacity style={st.quick} onPress={() => { send('Danke für die Rückmeldung!'); toast('Antwort gesendet.', 'success'); }}>
-            <Text style={st.quickText}>Danke!</Text>
-          </TouchableOpacity>
+          <TouchableOpacity style={st.quick} onPress={() => { send('Danke für die Rückmeldung!'); toast('Antwort gesendet.', 'success'); }}><Text style={st.quickText}>Danke!</Text></TouchableOpacity>
           <StarRating value={0} size={22} onChange={(n) => { send('Bewertung: ' + '★'.repeat(n) + ' (' + n + '/5)'); toast('Vielen Dank für Ihre Bewertung!', 'success'); }} />
         </View>
       ) : null}
 
       {quickReplies && quickReplies.length ? (
         <View style={st.quickBar}>
-          {quickReplies.map((q) => (
-            <TouchableOpacity key={q} style={st.quick} onPress={() => { send(q); toast('Antwort gesendet.', 'success'); }}>
-              <Text style={st.quickText}>{q}</Text>
-            </TouchableOpacity>
-          ))}
+          {quickReplies.map((q) => <TouchableOpacity key={q} style={st.quick} onPress={() => { send(q); toast('Antwort gesendet.', 'success'); }}><Text style={st.quickText}>{q}</Text></TouchableOpacity>)}
         </View>
       ) : null}
 
@@ -137,22 +131,9 @@ export default function ChatThreadScreen({ route, navigation }) {
       ) : null}
 
       <View style={[st.compose, { paddingBottom: Math.max(insets.bottom, 10) }]}>
-        <TouchableOpacity style={st.attach} onPress={pickImage} hitSlop={6}>
-          <VNIcon.camera s={20} c={C.ink2} />
-        </TouchableOpacity>
-        <TextInput
-          style={st.input}
-          value={draft}
-          onChangeText={setDraft}
-          placeholder={pendingImg ? 'Bildunterschrift (optional) …' : 'Nachricht schreiben …'}
-          placeholderTextColor={C.ink3}
-          onSubmitEditing={() => send()}
-          returnKeyType="send"
-          blurOnSubmit={false}
-        />
-        <TouchableOpacity style={st.sendBtn} onPress={() => send()}>
-          <VNIcon.send s={17} c="#fff" />
-        </TouchableOpacity>
+        <TouchableOpacity style={st.attach} onPress={pickImage} hitSlop={6}><VNIcon.camera s={20} c={C.ink2} /></TouchableOpacity>
+        <TextInput style={st.input} value={draft} onChangeText={setDraft} placeholder={pendingImg ? 'Bildunterschrift (optional) …' : 'Nachricht schreiben …'} placeholderTextColor={C.ink3} onSubmitEditing={() => send()} returnKeyType="send" blurOnSubmit={false} />
+        <TouchableOpacity style={st.sendBtn} onPress={() => send()}><VNIcon.send s={17} c="#fff" /></TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
   );
@@ -160,7 +141,7 @@ export default function ChatThreadScreen({ route, navigation }) {
 
 const st = StyleSheet.create({
   subHead: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: C.surface, borderBottomWidth: 1, borderBottomColor: C.line2 },
-  avatar: { width: 38, height: 38, borderRadius: 19, backgroundColor: C.teal50, alignItems: 'center', justifyContent: 'center' },
+  avatar: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   name: { fontSize: 14.5, fontWeight: '700', color: C.ink },
   bubble: { maxWidth: '82%', borderRadius: 14, paddingVertical: 9, paddingHorizontal: 12 },
   bubbleMe: { backgroundColor: C.teal600, borderBottomRightRadius: 4 },

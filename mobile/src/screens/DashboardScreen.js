@@ -7,10 +7,39 @@ import { C, S, R, STATUS_COLOR } from '../theme';
 import { Card, SectionLabel, StatusBadge, Notice, Btn, Field, Input, ChoiceGrid, SwitchRow, H2, P, Meta, KV, toast } from '../components';
 import { VNIcon } from '../icons';
 import { ANIMAL_LABEL } from '../data';
-import ConvoList, { ChatDisclaimer } from '../ConvoList';
 import CalendarTab from './CalendarTab';
 import ProfileTab, { VerifyBadge } from './ProfileTab';
+import { Glyph } from './ChatsScreen';
 import { useAppState } from '../lib/AdminContext';
+import { useChats } from '../lib/ChatContext';
+
+function ChatDisclaimer() {
+  return <Notice type="warn">Keine medizinische Beratung. Bei akuten Notfällen bitte immer zusätzlich telefonisch Kontakt aufnehmen.</Notice>;
+}
+
+/* Praxis-Posteingang: Chats mit role 'clinic' */
+function ClinicChatList({ chats, labels, navigation }) {
+  if (chats.length === 0) return <Card style={{ alignItems: 'center' }}><P>Keine Anfragen im Posteingang.</P></Card>;
+  return (
+    <Card pad={false}>
+      {chats.map((c, i) => {
+        const last = c.messages[c.messages.length - 1];
+        const lastText = last ? (last.type === 'note' ? 'Abschlussnotiz' : last.type === 'image' ? '📷 Bild' : last.text) : 'Noch keine Nachricht';
+        return (
+          <TouchableOpacity key={c.id} activeOpacity={0.7} onPress={() => navigation.navigate('ChatThread', { chatId: c.id, quickReplies: ['Gerne, kommen Sie vorbei.', 'Bitte kurz anrufen.', 'Wir melden uns gleich.'] })}
+            style={[{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 13 }, i > 0 && { borderTopWidth: 1, borderTopColor: C.line2 }]}>
+            <View style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: c.color + '22', alignItems: 'center', justifyContent: 'center' }}><Glyph name={c.icon} s={20} c={c.color} /></View>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={{ fontSize: 14.5, fontWeight: '700', color: C.ink }} numberOfLines={1}>{c.title}</Text>
+              <Text style={{ fontSize: 12.5, color: C.ink3, marginTop: 2 }} numberOfLines={1}>{lastText}</Text>
+            </View>
+            {c.unread > 0 ? <View style={{ minWidth: 20, height: 20, borderRadius: 10, backgroundColor: C.teal600, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5 }}><Text style={{ color: '#fff', fontSize: 11.5, fontWeight: '800' }}>{c.unread}</Text></View> : null}
+          </TouchableOpacity>
+        );
+      })}
+    </Card>
+  );
+}
 
 const pad2 = (n) => String(n).padStart(2, '0');
 
@@ -110,7 +139,8 @@ function StatusTab({ s, practices }) {
 }
 
 export default function DashboardScreen({ navigation }) {
-  const { data: D, clinicUnread } = useAppState();
+  const { data: D } = useAppState();
+  const { visibleChats, labels } = useChats();
   const me = D.PRACTICES[0];
   const DURATION = 24 * 3600 * 1000;
 
@@ -156,9 +186,7 @@ export default function DashboardScreen({ navigation }) {
     district, setDistrict,
   };
   const liveStatus = absence.active ? 'red' : active ? picked : 'grey';
-  const unread = Object.values(clinicUnread).reduce((a, b) => a + b, 0);
-
-  const clinicConvos = D.CONVERSATIONS.map((c) => ({ id: c.id, title: c.owner, sub: ANIMAL_LABEL[c.animal], animal: c.animal, date: c.date }));
+  const unread = clinicChats.reduce((n, c) => n + (c.unread || 0), 0);
 
   const tabs = [
     { key: 'status', label: 'Status', icon: 'siren' },
@@ -209,10 +237,8 @@ export default function DashboardScreen({ navigation }) {
       {tab === 'messages' ? (
         <View style={{ gap: S.s4 }}>
           <ChatDisclaimer />
-          {clinicConvos.length === 0
-            ? <Card style={{ alignItems: 'center' }}><P>Keine Konversationen vorhanden.</P></Card>
-            : <ConvoList kind="clinic" convos={clinicConvos} navigation={navigation}
-                quickReplies={['Gerne, kommen Sie vorbei.', 'Bitte kurz anrufen.', 'Wir melden uns gleich.']} />}
+          <ClinicChatList chats={clinicChats} labels={labels} navigation={navigation} />
+          <Btn label="Alle Chats öffnen" icon="chat" variant="secondary" block onPress={() => navigation.navigate('NachrichtenTab')} />
         </View>
       ) : null}
       {tab === 'appts' ? <CalendarTab /> : null}

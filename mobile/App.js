@@ -7,6 +7,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { AppStateProvider, useAppState } from './src/lib/AdminContext';
+import { ChatProvider, useChats } from './src/lib/ChatContext';
 import { C } from './src/theme';
 import { ToastHost } from './src/components';
 import { VNIcon } from './src/icons';
@@ -16,7 +17,7 @@ import ResultsScreen from './src/screens/ResultsScreen';
 import DetailScreen from './src/screens/DetailScreen';
 import RequestScreen from './src/screens/RequestScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
-import MessagesScreen from './src/screens/MessagesScreen';
+import ChatsScreen from './src/screens/ChatsScreen';
 import KontoScreen from './src/screens/KontoScreen';
 import ChatThreadScreen from './src/screens/ChatThreadScreen';
 import { AuthScreen, LoginScreen, RegisterOwnerScreen, RegisterClinicScreen } from './src/screens/AuthScreens';
@@ -60,7 +61,7 @@ function SuchenStackNav() {
 function NachrichtenStackNav() {
   return (
     <NachrichtenStack.Navigator screenOptions={stackOptions}>
-      <NachrichtenStack.Screen name="Messages" component={MessagesScreen} options={{ title: 'Meine Nachrichten' }} />
+      <NachrichtenStack.Screen name="Chats" component={ChatsScreen} options={{ title: 'Chats' }} />
     </NachrichtenStack.Navigator>
   );
 }
@@ -85,8 +86,9 @@ function KontoStackNav() {
 
 /* ---- Bottom-Tabs: immer sichtbares Dock ---- */
 function Tabs() {
-  const { auth, ownerUnread } = useAppState();
-  const unread = Object.values(ownerUnread).reduce((a, b) => a + b, 0);
+  const { auth } = useAppState();
+  const { totalUnread } = useChats();
+  const unread = totalUnread;
   return (
     <Tab.Navigator
       screenOptions={{
@@ -129,9 +131,11 @@ function Nav() {
 export default function App() {
   return (
     <AppStateProvider>
-      <StatusBar style="dark" />
-      <Nav />
-      <ToastHost />
+      <ChatProvider>
+        <StatusBar style="dark" />
+        <Nav />
+        <ToastHost />
+      </ChatProvider>
     </AppStateProvider>
   );
 }

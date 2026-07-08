@@ -7,6 +7,7 @@ import { Card, SectionLabel, Notice, Btn, Field, Input, ChoiceGrid, Meta, P, toa
 import { VNIcon, AnimalGlyph, ANIMAL_ICON } from '../icons';
 import { APPT_STATUS, ANIMAL_LABEL, ANIMALS, MONTHS_DE, DOW_DE, blocksFor } from '../data';
 import { useAppState } from '../lib/AdminContext';
+import { useChats } from '../lib/ChatContext';
 
 const pad = (n) => String(n).padStart(2, '0');
 const ymd = (d) => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
@@ -235,6 +236,11 @@ function DayTimeline({ iso, appts, onOpen, onNew }) {
 /* ---- Haupt-Kalender ---- */
 export default function CalendarTab() {
   const { data: D, clinicAppts, setApptStatus, completeAppt } = useAppState();
+  const { addMessage, chatById } = useChats();
+  const completeWithNote = (iso, idx, note) => {
+    const convoId = completeAppt(iso, idx, note);
+    if (convoId) { const cid = 'ch-' + convoId; if (chatById(cid)) addMessage(cid, { type: 'note', text: note, time: 'jetzt' }); }
+  };
   const today = D.TODAY_ISO;
   const [view, setView] = React.useState('day');
   const [sel, setSel] = React.useState(today);
@@ -382,7 +388,7 @@ export default function CalendarTab() {
           appt={dayAppts[modal.idx]}
           onClose={() => setModal(null)}
           onStatus={(stx) => setApptStatus(sel, modal.idx, stx)}
-          onComplete={(note) => completeAppt(sel, modal.idx, note)}
+          onComplete={(note) => completeWithNote(sel, modal.idx, note)}
         />
       ) : null}
       {pickOpen && view === 'month' ? (
