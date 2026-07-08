@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VetNow Studio</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">🐾</span>
+      <div>
+        <div class="brand-name">VetNow <span>Studio</span></div>
+        <div class="brand-sub">Control-Panel · Apps bauen, previewen & starten</div>
+      </div>
+    </div>
+    <div class="top-actions">
+      <span class="host-chip" id="hostChip">…</span>
+      <button class="btn ghost" id="btnGroups">Gruppen</button>
+      <button class="btn primary" id="btnAddApp">+ App</button>
+    </div>
+  </header>
+
+  <main class="wrap" id="groupsWrap"></main>
+
+  <div class="empty" id="emptyHint" style="display:none">
+    <p>Noch keine Apps. Füge deine erste App hinzu.</p>
+  </div>
+
+  <!-- Modals -->
+  <div class="modal-bg" id="modalBg" style="display:none">
+    <div class="modal" id="modal"></div>
+  </div>
+
+  <div class="toast-host" id="toastHost"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

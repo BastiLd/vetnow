@@ -1,0 +1,40 @@
+{
+  "groups": [
+    { "id": "vetnow", "name": "VetNow Kärnten", "color": "#0f9b8e" },
+    { "id": "andere", "name": "Weitere Apps", "color": "#2e6f9e" }
+  ],
+  "apps": [
+    {
+      "id": "vetnow-web",
+      "name": "VetNow — Web-App / PWA",
+      "group": "vetnow",
+      "color": "#0f9b8e",
+      "icon": "🐾",
+      "kind": "web",
+      "webDir": "web",
+      "distDir": "dist",
+      "basePath": "/vetnow/",
+      "buildCmd": "npm ci && npm run build"
+    },
+    {
+      "id": "vetnow-mobile",
+      "name": "VetNow — iPhone-App (Expo)",
+      "group": "vetnow",
+      "color": "#0c7d72",
+      "icon": "📱",
+      "kind": "expo",
+      "expoDir": "mobile",
+      "expoSdk": "54",
+      "expoPort": 8081
+    },
+    {
+      "id": "vetnow-extension",
+      "name": "VetNow — Chrome-Extension",
+      "group": "vetnow",
+      "color": "#8a5d05",
+      "icon": "🧩",
+      "kind": "extension",
+      "extensionDir": "extension"
+    }
+  ]
+}

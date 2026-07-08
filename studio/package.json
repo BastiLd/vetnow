@@ -1,0 +1,16 @@
+{
+  "name": "vetnow-studio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "VetNow Studio — Control-Panel: Apps bauen, Web-Vorschau, Expo-Server & QR-Codes, gruppierbar.",
+  "type": "commonjs",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "archiver": "^7.0.1",
+    "express": "^4.21.2",
+    "qrcode": "^1.5.4"
+  }
+}

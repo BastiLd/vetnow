@@ -6,6 +6,9 @@ web/dist/
 web/dist-ssr/
 web/dev-dist/
 
+# Studio-Laufzeit
+studio/data/
+
 # Expo
 mobile/.expo/
 mobile/.expo-shared/

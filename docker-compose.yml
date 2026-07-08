@@ -1,34 +1,44 @@
-# VetNow — Expo-Server dauerhaft auf einem Heimserver (z. B. ZimaOS) betreiben.
+# VetNow Studio — Control-Panel als eine Docker-App auf ZimaOS.
 #
-# WICHTIG: Unten die IP-Adresse deines Servers eintragen (SERVER_IP)!
+# Was der Container macht: klont dieses Repo (bzw. zieht bei jedem Neustart den
+# neuesten Stand), installiert Studio + baut die Web-App vor + installiert die
+# Mobile-Abhängigkeiten und startet dann VetNow Studio.
 #
-# Der Container klont dieses Repo selbst von GitHub (bzw. zieht bei jedem
-# Neustart den neuesten Stand), installiert die Abhängigkeiten und startet
-# den Expo/Metro-Server auf Port 8081. Danach am iPhone in Expo Go:
-#   "Enter URL manually"  ->  exp://SERVER_IP:8081
-# PC/Laptop kann aus bleiben — nur der Server muss laufen.
+# Danach im Browser:   http://SERVER-IP:3000
+#   -> Web-App bauen & previewen, Expo-Server starten (QR für iPhone),
+#      Extension herunterladen, Apps gruppieren.
+#
+# WICHTIG: Unten HOST_IP auf die LAN-IP deines ZimaOS-Servers setzen
+# (dieselbe wie in der Adressleiste, z. B. 192.168.68.10).
 services:
-  vetnow-expo:
+  vetnow-studio:
     image: node:22-bookworm
-    container_name: vetnow-expo
+    container_name: vetnow-studio
     environment:
-      # >>> HIER die LAN-IP deines ZimaOS-Servers eintragen (z. B. 192.168.68.50) <<<
-      REACT_NATIVE_PACKAGER_HOSTNAME: "192.168.68.50"
+      HOST_IP: "192.168.68.10"          # <<< LAN-IP deines Servers eintragen!
+      REPO_URL: "https://github.com/BastiLd/vetnow.git"
+      REPO_ROOT: "/repo"
+      STUDIO_DATA_DIR: "/data"
+      STUDIO_PORT: "3000"
       EXPO_NO_TELEMETRY: "1"
-      CI: "1"
-    command: >
-      bash -c "
-      if [ ! -d /repo/.git ]; then git clone https://github.com/BastiLd/vetnow.git /repo;
-      else cd /repo && git pull --ff-only || true; fi &&
-      cd /repo/mobile &&
-      npm ci &&
-      npx expo start --port 8081
-      "
+    command:
+      - bash
+      - -lc
+      - |
+        set -e
+        if [ ! -d /repo/.git ]; then git clone "$REPO_URL" /repo; else git -C /repo pull --ff-only || true; fi
+        cd /repo/studio && npm install --omit=dev
+        ( cd /repo/web && npm ci && npm run build ) || echo "Web-Build wird beim ersten Klick nachgeholt"
+        ( cd /repo/mobile && npm ci ) || echo "Mobile-Deps werden beim ersten Expo-Start nachgeholt"
+        node /repo/studio/server.js
     ports:
-      - "8081:8081"
+      - "3000:3000"     # Studio-Oberfläche
+      - "8081:8081"     # Expo/Metro (für Expo Go)
     volumes:
       - vetnow-repo:/repo
+      - vetnow-data:/data
     restart: unless-stopped
 
 volumes:
   vetnow-repo:
+  vetnow-data:

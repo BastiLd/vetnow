@@ -5,14 +5,24 @@ filtern, Status-Ampel (grün/gelb/grau/rot), Chat zwischen Tierhalter:innen und 
 Praxis-Dashboard, Login/Registrierung. **Alle enthaltenen Daten sind Platzhalter-Testdaten**
 (Telefonnummern `+43 000 000000` usw.).
 
-Zwei Apps, gleicher Funktionsumfang, gleiche Testdaten:
+Vier Bausteine, gleicher Funktionsumfang, gleiche Testdaten:
 
-| Ordner    | Was | Technik |
-|-----------|-----|---------|
-| `web/`    | Website + installierbare PWA | Vite, React, vite-plugin-pwa |
-| `mobile/` | iPhone-/Android-App | Expo (React Native), React Navigation |
+| Ordner       | Was | Technik |
+|--------------|-----|---------|
+| `web/`       | Website + installierbare PWA | Vite, React, vite-plugin-pwa |
+| `mobile/`    | iPhone-/Android-App | Expo (React Native), React Navigation |
+| `extension/` | Chrome-Extension (Praxis-Popup) | Manifest V3, vanilla JS |
+| `studio/`    | Control-Panel (bauen/previewen/starten, gruppierbar) | Node/Express, Docker |
 
 **Live:** https://bastild.github.io/vetnow/
+
+### Chat-System (Web + Mobile)
+
+Freie Chats wie WhatsApp-Gruppen: **Labels mit eigener Farbe & Icon**, Chats
+**erstellen / umbenennen / anpinnen / löschen**, nach Label filtern. Beim ersten
+Start werden **vorgefertigte Chats** in drei Bereichen angelegt
+(*Meine Tiere*, *Praxis-Posteingang*, *Praxis-Netzwerk*) — alles in den
+Einstellungen abschaltbar. Gespeichert lokal (localStorage/AsyncStorage).
 
 ## Web (`web/`)
 
@@ -40,18 +50,32 @@ Voraussetzungen: kostenlose **Expo Go**-App aus dem App Store; PC und iPhone im
 selben WLAN. Kein Apple Developer Account, kein Mac nötig.
 Hinweis: Das Projekt läuft auf **Expo SDK 54** (passend zur Expo-Go-Version im App Store).
 
-### Ohne Laptop: Expo-Server auf dem Heimserver (ZimaOS/Docker)
+## Chrome-Extension (`extension/`)
 
-`docker-compose.yml` im Repo-Root startet den Expo-Server dauerhaft auf einem
-Server im Heimnetz (klont das Repo selbst und zieht bei jedem Neustart den
-neuesten Stand von GitHub):
+Eigenständiges Praxis-Popup (Status/Termine/Nachrichten), kein Build nötig.
+`chrome://extensions` → Entwicklermodus → „Entpackte Erweiterung laden" →
+Ordner `extension/` wählen. Details: [extension/README.md](extension/README.md).
 
-1. In der Compose-Datei `REACT_NATIVE_PACKAGER_HOSTNAME` auf die LAN-IP des
-   Servers setzen (z. B. `192.168.68.50`).
-2. Auf dem Server: `docker compose up -d` (erster Start dauert ein paar
-   Minuten wegen `npm ci`).
-3. iPhone (gleiches WLAN): Expo Go öffnen → **„Enter URL manually"** →
-   `exp://SERVER-IP:8081` → verbinden.
+## VetNow Studio — Control-Panel (`studio/`)
+
+Ein Docker-Container mit Oberfläche, um alles zu **bauen, previewen, starten und
+zu gruppieren** — dauerhaft auf ZimaOS, Laptop kann aus sein.
+
+`docker-compose.yml` im Repo-Root startet Studio (klont das Repo selbst und
+zieht bei jedem Neustart den neuesten Stand):
+
+1. In der Compose-Datei `HOST_IP` auf die LAN-IP des Servers setzen
+   (dieselbe wie in der ZimaOS-Adressleiste, z. B. `192.168.68.10`).
+2. In ZimaOS: App Store → **„+"** → **„Install a customized app"** →
+   Compose importieren, Inhalt einfügen, installieren. (Erster Start dauert
+   einige Minuten.)
+3. Studio öffnen: **`http://SERVER-IP:3000`**
+   - Web-App **bauen** → **Handy-Vorschau** / **QR** / **Web öffnen**
+   - iPhone-App: **Expo starten** → **QR (exp://)** in Expo Go scannen;
+     **Expo-Version** jederzeit umschaltbar
+   - Extension als **ZIP** herunterladen
+
+Mehr: [studio/README.md](studio/README.md).
 
 ## Admin-Bereich
 
@@ -68,9 +92,10 @@ neuesten Stand von GitHub):
 
 ## Struktur
 
-- `web/src/data.js` bzw. `mobile/src/data.js` — alle Testdaten (Praxen, Chats,
-  Termine) als reine JS-Module, Einträge tragen `isTestData: true`.
-- `web/src/screens-*.jsx` — Screens, 1:1 aus dem ursprünglichen Prototyp portiert
-  (globale Script-Funktionen → ES-Module).
-- `mobile/src/screens/*.js` — React-Native-Portierung der Screens im gleichen
-  Design (Farben/Abstände aus `base.css`/`redesign.css`).
+- `web/src/data.js` bzw. `mobile/src/data.js` — alle Testdaten (18 Praxen, Chats
+  mit Labels, Termine) als reine JS-Module, Einträge tragen `isTestData: true`.
+- `web/src/screens-*.jsx` — Screens, 1:1 aus dem ursprünglichen Prototyp portiert.
+- `web/src/lib/chats.jsx`, `mobile/src/lib/ChatContext.js` — Chat-Store (Labels,
+  Farben, Icons, Persistenz).
+- `mobile/src/screens/*.js` — React-Native-Portierung im gleichen Design.
+- `extension/` — Chrome-Extension (MV3). `studio/` — Control-Panel (Node/Express).
