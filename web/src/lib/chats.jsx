@@ -4,6 +4,7 @@
 import React from 'react';
 import { CHATS_SEED, CHAT_LABELS_SEED, CHAT_SETTINGS_DEFAULT } from '../data.js';
 import { useAdmin } from './adminContext.jsx';
+import { IS_CLEAN } from './config.js';
 
 const K_CHATS = 'vn_chats_v1';
 const K_LABELS = 'vn_labels_v1';
@@ -17,15 +18,21 @@ const uid = (p) => p + Math.random().toString(36).slice(2, 9) + (Date.now ? Date
 
 const ChatContext = React.createContext(null);
 
-function initSettings() { return { ...CHAT_SETTINGS_DEFAULT, ...load(K_SETTINGS, {}) }; }
+function initSettings() {
+  const s = { ...CHAT_SETTINGS_DEFAULT, ...load(K_SETTINGS, {}) };
+  if (IS_CLEAN) s.autoSeed = false; // saubere Version: keine vorgefertigten Chats
+  return s;
+}
 function initLabels(settings) {
   const stored = load(K_LABELS, null);
   if (stored) return stored;
+  if (IS_CLEAN) return CHAT_LABELS_SEED.map((l) => ({ ...l })); // Labels ja, aber keine Chats
   return settings.autoSeed ? CHAT_LABELS_SEED.map((l) => ({ ...l })) : [];
 }
 function initChats(settings) {
   const stored = load(K_CHATS, null);
   if (stored) return stored;
+  if (IS_CLEAN) return []; // keine Testdaten-Chats in der sauberen Version
   return settings.autoSeed ? CHATS_SEED.map((c) => ({ ...c, messages: c.messages.map((m) => ({ ...m })) })) : [];
 }
 

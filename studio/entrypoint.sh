@@ -17,8 +17,8 @@ fi
 echo "==> Installiere Studio-Abhängigkeiten"
 ( cd "$REPO_ROOT/studio" && npm install --omit=dev )
 
-echo "==> Baue Web-App vor (für sofortige Vorschau)"
-( cd "$REPO_ROOT/web" && npm ci && npm run build ) || echo "Web-Build übersprungen (später im Studio nachholbar)"
+echo "==> Baue Web-App vor (saubere Version, für sofortige Vorschau)"
+( cd "$REPO_ROOT/web" && npm ci && VITE_VN_CLEAN=true npm run build ) || echo "Web-Build übersprungen (später im Studio nachholbar)"
 
 echo "==> Installiere Mobile-Abhängigkeiten (für Expo)"
 ( cd "$REPO_ROOT/mobile" && npm ci ) || echo "Mobile-Deps übersprungen (beim ersten Expo-Start nachholbar)"

@@ -3,6 +3,7 @@ node_modules/
 
 # Build-Ausgaben
 web/dist/
+web/dist-demo/
 web/dist-ssr/
 web/dev-dist/
 

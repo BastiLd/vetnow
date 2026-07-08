@@ -30,6 +30,8 @@ jobs:
           cache-dependency-path: web/package-lock.json
       - run: npm ci
       - run: npm run build
+        env:
+          VITE_VN_CLEAN: 'true'   # Öffentliche Seite = saubere Version ohne Testdaten
       - uses: actions/upload-pages-artifact@v3
         with:
           path: web/dist

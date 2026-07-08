@@ -28,7 +28,7 @@ services:
         set -e
         if [ ! -d /repo/.git ]; then git clone "$REPO_URL" /repo; else git -C /repo pull --ff-only || true; fi
         cd /repo/studio && npm install --omit=dev
-        ( cd /repo/web && npm ci && npm run build ) || echo "Web-Build wird beim ersten Klick nachgeholt"
+        ( cd /repo/web && npm ci && VITE_VN_CLEAN=true npm run build ) || echo "Web-Build wird beim ersten Klick nachgeholt"
         ( cd /repo/mobile && npm ci ) || echo "Mobile-Deps werden beim ersten Expo-Start nachgeholt"
         node /repo/studio/server.js
     ports:

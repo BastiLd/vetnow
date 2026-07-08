@@ -5,8 +5,8 @@
   ],
   "apps": [
     {
-      "id": "vetnow-web",
-      "name": "VetNow — Web-App / PWA",
+      "id": "vetnow-web-clean",
+      "name": "VetNow — Web (sauber, ohne Testdaten)",
       "group": "vetnow",
       "color": "#0f9b8e",
       "icon": "🐾",
@@ -14,7 +14,19 @@
       "webDir": "web",
       "distDir": "dist",
       "basePath": "/vetnow/",
-      "buildCmd": "npm ci && npm run build"
+      "buildCmd": "npm ci && VITE_VN_CLEAN=true npm run build"
+    },
+    {
+      "id": "vetnow-web-demo",
+      "name": "VetNow — Web (Demo mit Testdaten)",
+      "group": "vetnow",
+      "color": "#19b3a4",
+      "icon": "🧪",
+      "kind": "web",
+      "webDir": "web",
+      "distDir": "dist-demo",
+      "basePath": "/vetnow-demo/",
+      "buildCmd": "npm ci && npx vite build --base=/vetnow-demo/ --outDir dist-demo"
     },
     {
       "id": "vetnow-mobile",
