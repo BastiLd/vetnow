@@ -1,0 +1,29 @@
+# Abhängigkeiten
+node_modules/
+
+# Build-Ausgaben
+web/dist/
+web/dist-ssr/
+web/dev-dist/
+
+# Expo
+mobile/.expo/
+mobile/.expo-shared/
+mobile/dist/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Logs & OS
+npm-debug.log*
+yarn-error.log
+*.log
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
