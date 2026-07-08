@@ -34,7 +34,7 @@ export function ScreenHome({ nav, setFilters, filters }) {
     { key: 'bird', icon: 'bird', label: 'Vogel' },
     { key: 'exotic', icon: 'turtle', label: 'Exoten' },
   ];
-  const goQuick = (animal) => { if (setFilters && filters) setFilters({ ...filters, animal }); nav('search'); };
+  const goQuick = (animal) => { if (setFilters && filters) setFilters({ ...filters, animals: [animal] }); nav('search'); };
   return (
     <div className="vn-page home-page">
       <div className="vn-page-wide home-grid">
@@ -142,32 +142,37 @@ export function ScreenSearch({ nav, filters, setFilters }) {
   const sitOpts = SITUATIONS.map((s) => ({ ...s, icon: SERVICE_ICON[s.key] }));
   const distOpts = DISTRICTS.map((d) => ({ key: d, label: d }));
 
-  const steps = [!!filters.animal, !!filters.situation, !!filters.district, !!(filters.specialties && filters.specialties.length)];
-  const doneCount = steps.filter(Boolean).length;
-  const pct = Math.round((doneCount / steps.length) * 100);
+  const chosen = (filters.animals.length ? 1 : 0) + (filters.situations.length ? 1 : 0) + (filters.districts.length ? 1 : 0) + (filters.specialties.length ? 1 : 0);
+  const pct = Math.round((chosen / 4) * 100);
+  const extras = [
+    ['onlyConfirmed', 'Nur aktuell bestätigte Praxen', 'Blendet graue (nicht bestätigte) Einträge aus.'],
+    ['onlyGreen', 'Nur heute erreichbar (grün)', 'Zeigt nur Praxen, die heute Notfälle annehmen.'],
+    ['housecall', 'Bietet Hausbesuche', 'Nur Praxen mit Hausbesuch-Angebot.'],
+    ['is24h', 'Rund um die Uhr (24 h)', 'Nur durchgehend erreichbare Praxen.'],
+  ];
 
   return (
     <div className="vn-page">
       <div className="vn-page-wide d-narrow">
         <div className="search-progress">
-          <span className="sp-label">{doneCount === 0 ? 'Auswahl starten' : doneCount + ' von 4 gewählt'}</span>
+          <span className="sp-label">{chosen === 0 ? 'Auswahl starten' : chosen + ' von 4 Kategorien gewählt'}</span>
           <span className="sp-bar"><span className="sp-fill" style={{ width: Math.max(6, pct) + '%' }}></span></span>
         </div>
 
         <div className="stack-6" style={{ marginTop: 18 }}>
           <div>
             <h2 className="vn-h2">Wonach suchen Sie?</h2>
-            <p className="vn-text" style={{ marginTop: 6 }}>Alle Angaben sind optional. Je genauer, desto besser passen die Ergebnisse.</p>
+            <p className="vn-text" style={{ marginTop: 6 }}>Alle Angaben sind optional und <b>mehrfach wählbar</b>. Je genauer, desto besser passen die Ergebnisse.</p>
           </div>
 
-          <ChoiceGroup label="Tierart" cols="2" options={animalOpts}
-            value={filters.animal} onChange={(v) => set('animal', v)} />
+          <ChoiceGroup label="Tierart" hint="Mehrfachauswahl" cols="2" multi options={animalOpts}
+            value={filters.animals} onChange={(v) => set('animals', v)} />
 
-          <ChoiceGroup label="Situation" cols="2" options={sitOpts}
-            value={filters.situation} onChange={(v) => set('situation', v)} />
+          <ChoiceGroup label="Situation" hint="Mehrfachauswahl" cols="2" multi options={sitOpts}
+            value={filters.situations} onChange={(v) => set('situations', v)} />
 
-          <ChoiceGroup label="Bezirk" cols="2" options={distOpts}
-            value={filters.district} onChange={(v) => set('district', v)} />
+          <ChoiceGroup label="Bezirk" hint="Mehrfachauswahl" cols="2" multi options={distOpts}
+            value={filters.districts} onChange={(v) => set('districts', v)} />
 
           <div>
             <div className="row gap-2" style={{ marginBottom: 12 }}>
@@ -178,13 +183,20 @@ export function ScreenSearch({ nav, filters, setFilters }) {
               onChange={(v) => set('specialties', v)} placeholder="Alle Spezialgebiete" />
           </div>
 
-          <button className="switch-row" onClick={() => set('onlyConfirmed', !filters.onlyConfirmed)} style={{ width: '100%', textAlign: 'left' }}>
-            <div style={{ flex: 1 }}>
-              <div className="section-label">Nur aktuell bestätigte Praxen</div>
-              <div className="vn-meta" style={{ marginTop: 3 }}>Blendet graue (nicht bestätigte) Einträge aus.</div>
+          <div>
+            <div className="section-label" style={{ marginBottom: 12 }}>Weitere Filter</div>
+            <div className="stack-3">
+              {extras.map(([key, title, sub]) => (
+                <button key={key} className="switch-row" onClick={() => set(key, !filters[key])} style={{ width: '100%', textAlign: 'left' }}>
+                  <div style={{ flex: 1 }}>
+                    <div className="section-label">{title}</div>
+                    <div className="vn-meta" style={{ marginTop: 3 }}>{sub}</div>
+                  </div>
+                  <Switch on={filters[key]} />
+                </button>
+              ))}
             </div>
-            <Switch on={filters.onlyConfirmed} />
-          </button>
+          </div>
         </div>
 
         <div className="sticky-cta">

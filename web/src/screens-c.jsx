@@ -1,8 +1,10 @@
 /* VetNow — Screens C: Anfrageformular */
 import React from 'react';
 import { VNIcon, Checkbox, toast } from './components.jsx';
-import { ANIMALS, SITUATIONS, DISTRICTS } from './data.js';
+import { ANIMALS, SITUATIONS, DISTRICTS, ANIMAL_LABEL, SERVICE_LABEL } from './data.js';
 import { useVNData } from './lib/adminContext.jsx';
+import { useChats } from './lib/chats.jsx';
+import { ANIMAL_ICON } from './components.jsx';
 
 export function Field({ label, req, children }) {
   return (
@@ -15,15 +17,17 @@ export function Field({ label, req, children }) {
 
 export function ScreenRequest({ nav, filters, practiceId, auth }) {
   const D = useVNData();
+  const { createChat } = useChats();
   const p = practiceId ? D.PRACTICES.find((x) => x.id === practiceId) : null;
   const loggedIn = auth && auth.role;
   const [sent, setSent] = React.useState(false);
   const [err, setErr] = React.useState({});
+  const [chatId, setChatId] = React.useState(null);
   const [form, setForm] = React.useState({
     name: '', phone: '',
-    animal: filters.animal || '',
-    situation: filters.situation || '',
-    district: filters.district || (p ? p.district : ''),
+    animal: (filters.animals && filters.animals[0]) || '',
+    situation: (filters.situations && filters.situations[0]) || '',
+    district: (filters.districts && filters.districts[0]) || (p ? p.district : ''),
     message: '',
     agree: false,
   });
@@ -35,8 +39,26 @@ export function ScreenRequest({ nav, filters, practiceId, auth }) {
     else if ((form.phone.match(/\d/g) || []).length < 6) e.phone = 'Bitte gültige Telefonnummer eingeben (für den Rückruf der Praxis).';
     if (!form.agree) e.agree = 'Bitte bestätigen Sie den Hinweis.';
     setErr(e);
-    if (Object.keys(e).length === 0) { setSent(true); toast('Anfrage übermittelt.', 'success'); }
-    else { toast('Bitte prüfen Sie die markierten Felder.', 'error'); }
+    if (Object.keys(e).length === 0) {
+      // Anfrage als neuen Chat anlegen (Gruppe "Meine Tiere")
+      const parts = [];
+      if (form.animal) parts.push(ANIMAL_LABEL[form.animal]);
+      if (form.situation) parts.push(SERVICE_LABEL[form.situation]);
+      const firstMsg = form.message.trim() || 'Guten Tag, ich hätte gern einen Termin.';
+      const id = createChat({
+        role: 'owner',
+        title: p ? p.name : 'Neue Anfrage',
+        sub: [form.district, ...parts].filter(Boolean).join(' · '),
+        animal: form.animal || 'other',
+        color: '#0f9b8e',
+        icon: form.animal ? ANIMAL_ICON[form.animal] : 'chat',
+        labels: ['tiere'],
+        messages: [{ from: 'owner', text: firstMsg, time: 'jetzt' }],
+      });
+      setChatId(id);
+      setSent(true);
+      toast('Anfrage gesendet — als Chat gespeichert.', 'success');
+    } else { toast('Bitte prüfen Sie die markierten Felder.', 'error'); }
   };
 
   if (sent) {
@@ -49,11 +71,12 @@ export function ScreenRequest({ nav, filters, practiceId, auth }) {
             </div>
             <h2 className="vn-h2">Vielen Dank!</h2>
             <p className="vn-text" style={{ marginTop: 10, maxWidth: 380, marginInline: 'auto' }}>
-              Ihre Anfrage{p ? ' an ' + p.name : ''} wurde übermittelt. <strong>Bei akuten Notfällen nehmen Sie bitte zusätzlich telefonisch Kontakt auf</strong> — eine Anfrage ersetzt keinen Anruf.
+              Ihre Anfrage{p ? ' an ' + p.name : ''} wurde als <strong>neuer Chat</strong> gespeichert — Sie finden ihn unter „Nachrichten". <strong>Bei akuten Notfällen nehmen Sie bitte zusätzlich telefonisch Kontakt auf.</strong>
             </p>
             <div className="stack-3" style={{ marginTop: 24 }}>
-              {p && <a className="btn btn-primary btn-block" href={'tel:' + p.phone.replace(/\s/g, '')}><VNIcon.phone s={18} /> {p.name} anrufen</a>}
-              <button className="btn btn-secondary btn-block" onClick={() => nav('results')}>Zurück zu den Ergebnissen</button>
+              <button className="btn btn-primary btn-block" onClick={() => nav('owner-messages')}><VNIcon.chat s={18} /> Zum Chat</button>
+              {p && <a className="btn btn-secondary btn-block" href={'tel:' + p.phone.replace(/\s/g, '')}><VNIcon.phone s={18} /> {p.name} anrufen</a>}
+              <button className="btn btn-ghost btn-block" onClick={() => nav('results')}>Zurück zu den Ergebnissen</button>
             </div>
           </div>
         </div>

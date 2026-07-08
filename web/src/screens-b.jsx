@@ -5,12 +5,19 @@ import { ANIMAL_LABEL, SERVICE_LABEL, SPECIALTY_LABEL, sortPractices } from './d
 import { useVNData } from './lib/adminContext.jsx';
 
 export function applyFilters(practices, filters) {
+  const animals = filters.animals || [];
+  const situations = filters.situations || [];
+  const districts = filters.districts || [];
   let list = practices.filter((p) => {
-    if (filters.animal && filters.animal !== 'other' && !p.animals.includes(filters.animal)) return false;
-    if (filters.situation && !p.services.includes(filters.situation)) return false;
-    if (filters.district && !p.district.startsWith(filters.district)) return false;
+    // Mehrfachauswahl: Treffer, wenn mindestens eine gewählte Option passt
+    if (animals.length && !animals.some((a) => a === 'other' || p.animals.includes(a))) return false;
+    if (situations.length && !situations.some((s) => p.services.includes(s))) return false;
+    if (districts.length && !districts.some((d) => p.district.startsWith(d))) return false;
     if (filters.specialties && filters.specialties.length && !filters.specialties.some((s) => (p.specialties || []).includes(s))) return false;
     if (filters.onlyConfirmed && p.status === 'grey') return false;
+    if (filters.onlyGreen && p.status !== 'green') return false;
+    if (filters.housecall && !p.services.includes('housecall')) return false;
+    if (filters.is24h && !/24/.test(p.hoursShort || '')) return false;
     return true;
   });
   return sortPractices(list);
@@ -18,11 +25,14 @@ export function applyFilters(practices, filters) {
 
 function FilterSummary({ filters, nav }) {
   const chips = [];
-  if (filters.animal) chips.push(ANIMAL_LABEL[filters.animal]);
-  if (filters.situation) chips.push(SERVICE_LABEL[filters.situation]);
-  if (filters.district) chips.push(filters.district);
+  (filters.animals || []).forEach((a) => chips.push(ANIMAL_LABEL[a]));
+  (filters.situations || []).forEach((s) => chips.push(SERVICE_LABEL[s]));
+  (filters.districts || []).forEach((d) => chips.push(d));
   (filters.specialties || []).forEach((s) => chips.push(SPECIALTY_LABEL[s]));
   if (filters.onlyConfirmed) chips.push('Nur bestätigte');
+  if (filters.onlyGreen) chips.push('Heute erreichbar');
+  if (filters.housecall) chips.push('Hausbesuch');
+  if (filters.is24h) chips.push('24 h');
   return (
     <div className="row between gap-3" style={{ flexWrap: 'wrap' }}>
       <div className="tag-row">

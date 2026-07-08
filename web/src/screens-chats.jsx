@@ -3,7 +3,7 @@
    Label-Verwaltung, Einstellungen und Thread-Ansicht. */
 import React from 'react';
 import { VNIcon, AnimalGlyph, Switch, toast } from './components.jsx';
-import { CHAT_ROLES } from './data.js';
+import { CHAT_ROLES, botReply, botGreeting } from './data.js';
 import { useChats } from './lib/chats.jsx';
 
 const PALETTE = ['#0f9b8e', '#0c7d72', '#2e6f9e', '#16a34a', '#e3a008', '#dc2626', '#8a5d05', '#6c7d79', '#7c3aed', '#db2777'];
@@ -199,13 +199,43 @@ function ChatSettings({ settings, setSetting, onClose, resetSeed, clearAll }) {
 }
 
 /* ---------- Thread ---------- */
-function ChatThread({ chat, onBack, addMessage, labels }) {
+function ChatThread({ chat, onBack, addMessage, labels, settings }) {
   const me = chat.role === 'owner' ? 'owner' : 'clinic';
+  const other = me === 'owner' ? 'clinic' : 'owner';
   const [draft, setDraft] = React.useState('');
   const [pendingImg, setPendingImg] = React.useState(null);
+  const [typing, setTyping] = React.useState(false);
   const fileRef = React.useRef(null);
   const scrollRef = React.useRef(null);
-  React.useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [chat.messages.length]);
+  const handledRef = React.useRef('');
+  const timersRef = React.useRef([]);
+  React.useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [chat.messages.length, typing]);
+
+  // Auto-Antwort-Bot: reagiert, wenn die letzte Nachricht von MIR ist (oder Chat leer → Begrüßung).
+  React.useEffect(() => {
+    if (!settings || !settings.botEnabled) return;
+    const msgs = chat.messages;
+    const last = msgs[msgs.length - 1];
+    const sig = chat.id + ':' + msgs.length + ':' + (last ? last.from + last.type : 'empty');
+    if (handledRef.current === sig) return;
+
+    const schedule = (fn, delay) => { const t = setTimeout(fn, delay); timersRef.current.push(t); };
+    const withTyping = (produce) => {
+      if (settings.botTyping) { setTyping(true); schedule(() => { setTyping(false); addMessage(chat.id, produce()); }, 1100 + Math.random() * 700); }
+      else schedule(() => addMessage(chat.id, produce()), 500);
+    };
+
+    if (msgs.length === 0 && settings.botGreeting) {
+      handledRef.current = sig;
+      withTyping(() => ({ from: other, text: botGreeting(other), time: 'jetzt' }));
+    } else if (last && last.from === me && last.type !== 'note') {
+      handledRef.current = sig;
+      const replyText = last.type === 'image' ? 'Danke fürs Bild! Wir sehen es uns an.' : botReply(last.text, other);
+      withTyping(() => ({ from: other, text: replyText, time: 'jetzt' }));
+    }
+    return () => { timersRef.current.forEach(clearTimeout); timersRef.current = []; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chat.messages.length, chat.id, settings && settings.botEnabled]);
 
   const send = () => {
     if (pendingImg) { addMessage(chat.id, { from: me, type: 'image', src: pendingImg, text: draft.trim(), time: 'jetzt' }); setPendingImg(null); setDraft(''); return; }
@@ -251,6 +281,12 @@ function ChatThread({ chat, onBack, addMessage, labels }) {
                 </div>
               );
             })}
+            {typing && (
+              <div className="bubble-row">
+                <span className={'bubble-av ' + other}><VNIcon.paw2 s={14} /></span>
+                <div><div className={'bubble ' + other + ' typing-bubble'}><span className="dot"></span><span className="dot"></span><span className="dot"></span></div></div>
+              </div>
+            )}
           </div>
           {pendingImg && (
             <div className="img-preview"><img src={pendingImg} alt="Vorschau" /><span className="vn-meta">Bild angehängt</span><button className="vn-back ip-x" style={{ width: 32, height: 32 }} onClick={() => setPendingImg(null)}><VNIcon.x s={16} /></button></div>
@@ -316,7 +352,7 @@ export function ScreenChats() {
   React.useEffect(() => { if (openId) markRead(openId); /* eslint-disable-next-line */ }, [openId]);
 
   if (openChat) {
-    return <ChatThread chat={openChat} labels={labels} addMessage={addMessage} onBack={() => setOpenId(null)} />;
+    return <ChatThread chat={openChat} labels={labels} addMessage={addMessage} settings={settings} onBack={() => setOpenId(null)} />;
   }
 
   let list = filter ? visibleChats.filter((c) => (c.labels || []).includes(filter) || c.role === filter) : visibleChats;

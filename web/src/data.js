@@ -529,7 +529,39 @@ export const CHAT_SETTINGS_DEFAULT = {
   enablePosteingang: true, // Bereich "Praxis-Posteingang"
   enableNetwork: true,   // Bereich "Praxis-Netzwerk"
   showPinned: true,      // angepinnte Chats oben
+  botEnabled: true,      // Auto-Antwort-Bot (Demo)
+  botTyping: true,       // Tipp-Animation (3 Punkte), während die Gegenseite "tippt"
+  botGreeting: true,     // Begrüßung beim ersten Öffnen eines leeren Chats
 };
+
+/* ---- Auto-Antwort-Bot (Demo, kein echter Server) ----
+   fromRole = wer antwortet ('clinic' antwortet Tierhaltern, 'owner' antwortet Praxen).
+   Einfache Schlagwort-Erkennung für passendere Antworten. */
+export function botReply(userText, fromRole) {
+  const t = (userText || '').toLowerCase();
+  if (fromRole === 'owner') {
+    // Gegenseite ist ein Tierhalter (im Praxis-Posteingang)
+    if (/notfall|dringend|sofort|blut|atemnot|unfall/.test(t)) return 'Oh nein — wir machen uns sofort auf den Weg zu Ihnen! Danke.';
+    if (/termin|uhr|morgen|passt|10:30|14:30/.test(t)) return 'Perfekt, das passt uns gut. Vielen Dank!';
+    if (/danke|super|top/.test(t)) return 'Ich danke Ihnen herzlich! 🐾';
+    if (/\?$/.test(t)) return 'Ah, gute Frage — dann warten wir kurz auf Ihre Rückmeldung.';
+    return 'Alles klar, vielen Dank für die Info!';
+  }
+  // Gegenseite ist eine Praxis (Standard)
+  if (/notfall|dringend|sofort|blut|atemnot|kollaps|unfall|vergift|krampf/.test(t)) return 'Das klingt dringend. Bitte kommen Sie sofort vorbei oder rufen Sie uns direkt an — wir bereiten alles vor.';
+  if (/termin|wann|uhrzeit|vorbei|kommen|frei|verfügbar/.test(t)) return 'Gerne! Morgen um 10:30 Uhr wäre frei. Passt Ihnen das, oder soll ich einen anderen Zeitpunkt suchen?';
+  if (/danke|super|perfekt|passt|top/.test(t)) return 'Sehr gerne — gute Besserung für Ihren Liebling! 🐾';
+  if (/impf|kastrat|chip|routine|kontrolle|zahn/.test(t)) return 'Kein Problem, das übernehmen wir. Bringen Sie bitte den Impfpass mit, falls vorhanden.';
+  if (/hausbesuch|zu ihnen|vorbeikommen/.test(t)) return 'Hausbesuche sind möglich. Sagen Sie uns Ihre Adresse und einen Wunschzeitpunkt, wir melden uns.';
+  if (/\?$|frage|kann|könnt|bietet|habt|haben sie/.test(t)) return 'Ja, das ist bei uns möglich. Sagen Sie einfach kurz Bescheid, wann es Ihnen passt.';
+  return 'Danke für Ihre Nachricht! Wir melden uns gleich bei Ihnen. Bei akuten Notfällen bitte zusätzlich telefonisch anrufen.';
+}
+
+export function botGreeting(fromRole) {
+  return fromRole === 'owner'
+    ? 'Hallo! 👋 Danke für Ihre Rückmeldung — wie geht es dem Tier?'
+    : 'Hallo! 👋 Schön, dass Sie sich melden. Wie können wir Ihnen und Ihrem Tier helfen?';
+}
 
 export const CHAT_ROLES = [
   { key: 'owner',   label: 'Meine Tiere',        defaultLabel: 'tiere' },

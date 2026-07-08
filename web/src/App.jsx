@@ -118,7 +118,7 @@ function LegalFooter({ nav }) {
 
 export default function App({ initialScreen, initialId }) {
   const [route, setRoute] = React.useState({ name: initialScreen || 'home', practiceId: initialId });
-  const [filters, setFilters] = React.useState({ animal: null, situation: null, district: null, specialties: [], onlyConfirmed: false });
+  const [filters, setFilters] = React.useState({ animals: [], situations: [], districts: [], specialties: [], onlyConfirmed: false, onlyGreen: false, housecall: false, is24h: false });
   const [auth, setAuth] = React.useState({ role: null, name: '' });
   const bodyRef = React.useRef(null);
 

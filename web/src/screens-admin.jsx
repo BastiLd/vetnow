@@ -4,7 +4,8 @@ import React from 'react';
 import { VNIcon, Switch, toast } from './components.jsx';
 import { checkAdminLogin } from './lib/admin.js';
 import { useAdmin } from './lib/adminContext.jsx';
-import { PRACTICES, CONVERSATIONS, OWNER_CONVERSATIONS } from './data.js';
+import { useChats } from './lib/chats.jsx';
+import { PRACTICES, CHATS_SEED } from './data.js';
 
 function AdminLogin({ onSuccess }) {
   const [user, setUser] = React.useState('');
@@ -46,9 +47,10 @@ function AdminLogin({ onSuccess }) {
 
 export function ScreenAdmin({ nav }) {
   const { hideTestData, setHideTestData, adminLoggedIn, setAdminLoggedIn } = useAdmin();
+  const { settings, setSetting } = useChats();
 
   const testCount = PRACTICES.filter((p) => p.isTestData).length;
-  const chatCount = CONVERSATIONS.filter((c) => c.isTestData).length + OWNER_CONVERSATIONS.filter((c) => c.isTestData).length;
+  const chatCount = CHATS_SEED.filter((c) => c.isTestData).length;
 
   if (!adminLoggedIn) {
     return (
@@ -86,6 +88,28 @@ export function ScreenAdmin({ nav }) {
             Andere Besucher sehen weiterhin die Testdaten. Ein globaler Schalter für alle Besucher
             würde ein Backend (z.&nbsp;B. Supabase, kostenloser Tarif, eigenes Konto nötig) erfordern —
             bewusst nicht eingebaut.
+          </div>
+        </div>
+
+        <div>
+          <div className="section-label" style={{ marginBottom: 10 }}>Auto-Antwort-Bot (Demo)</div>
+          <div className="stack-3">
+            <button className="switch-row" style={{ width: '100%', textAlign: 'left' }}
+              onClick={() => { const on = !settings.botEnabled; setSetting('botEnabled', on); toast(on ? 'Bot aktiviert.' : 'Bot deaktiviert.', 'success'); }}>
+              <div style={{ flex: 1 }}>
+                <div className="section-label">Automatische Antworten</div>
+                <div className="vn-meta" style={{ marginTop: 3 }}>Wenn du schreibst, antwortet die Gegenseite automatisch (mit Tipp-Animation).</div>
+              </div>
+              <Switch on={settings.botEnabled} />
+            </button>
+            <button className="switch-row" style={{ width: '100%', textAlign: 'left' }} onClick={() => setSetting('botTyping', !settings.botTyping)}>
+              <div style={{ flex: 1 }}><div className="section-label">Tipp-Animation (3 Punkte)</div><div className="vn-meta" style={{ marginTop: 3 }}>Zeigt „…", während die Gegenseite tippt.</div></div>
+              <Switch on={settings.botTyping} />
+            </button>
+            <button className="switch-row" style={{ width: '100%', textAlign: 'left' }} onClick={() => setSetting('botGreeting', !settings.botGreeting)}>
+              <div style={{ flex: 1 }}><div className="section-label">Begrüßung beim ersten Öffnen</div><div className="vn-meta" style={{ marginTop: 3 }}>Leerer Chat wird automatisch begrüßt.</div></div>
+              <Switch on={settings.botGreeting} />
+            </button>
           </div>
         </div>
 
