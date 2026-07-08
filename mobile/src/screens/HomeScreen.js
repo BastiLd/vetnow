@@ -14,7 +14,7 @@ const QUICK = [
 export default function HomeScreen({ navigation }) {
   const { filters, setFilters } = useAppState();
   const goQuick = (animal) => {
-    setFilters({ ...filters, animal });
+    setFilters({ ...filters, animals: [animal] });
     navigation.navigate('SuchenTab', { screen: 'Search' });
   };
   return (

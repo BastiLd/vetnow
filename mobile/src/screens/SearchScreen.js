@@ -15,35 +15,40 @@ export default function SearchScreen({ navigation }) {
   const sitOpts = SITUATIONS.map((s) => ({ ...s, icon: SERVICE_ICON[s.key] }));
   const distOpts = DISTRICTS.map((d) => ({ key: d, label: d }));
 
-  const steps = [!!filters.animal, !!filters.situation, !!filters.district, !!(filters.specialties && filters.specialties.length)];
-  const doneCount = steps.filter(Boolean).length;
+  const chosen = (filters.animals.length ? 1 : 0) + (filters.situations.length ? 1 : 0) + (filters.districts.length ? 1 : 0) + (filters.specialties.length ? 1 : 0);
+  const extras = [
+    ['onlyConfirmed', 'Nur aktuell bestätigte Praxen', 'Blendet graue (nicht bestätigte) Einträge aus.'],
+    ['onlyGreen', 'Nur heute erreichbar (grün)', 'Zeigt nur Praxen, die heute Notfälle annehmen.'],
+    ['housecall', 'Bietet Hausbesuche', 'Nur Praxen mit Hausbesuch-Angebot.'],
+    ['is24h', 'Rund um die Uhr (24 h)', 'Nur durchgehend erreichbare Praxen.'],
+  ];
 
   return (
     <View style={{ flex: 1, backgroundColor: C.surface2 }}>
       <ScrollView contentContainerStyle={{ padding: S.s5, gap: S.s5, paddingBottom: 110 }}>
         <View style={st.progressRow}>
-          <Meta>{doneCount === 0 ? 'Auswahl starten' : doneCount + ' von 4 gewählt'}</Meta>
-          <View style={st.bar}><View style={[st.fill, { width: `${Math.max(6, (doneCount / 4) * 100)}%` }]} /></View>
+          <Meta>{chosen === 0 ? 'Auswahl starten' : chosen + ' von 4 Kategorien gewählt'}</Meta>
+          <View style={st.bar}><View style={[st.fill, { width: `${Math.max(6, (chosen / 4) * 100)}%` }]} /></View>
         </View>
 
         <View>
           <H2>Wonach suchen Sie?</H2>
-          <P style={{ marginTop: 5 }}>Alle Angaben sind optional. Je genauer, desto besser passen die Ergebnisse.</P>
+          <P style={{ marginTop: 5 }}>Alle Angaben sind optional und mehrfach wählbar. Je genauer, desto besser passen die Ergebnisse.</P>
         </View>
 
         <View style={{ gap: 10 }}>
-          <SectionLabel>Tierart</SectionLabel>
-          <ChoiceGrid options={animalOpts} value={filters.animal} onChange={(v) => set('animal', v)} />
+          <SectionLabel>Tierart (Mehrfachauswahl)</SectionLabel>
+          <ChoiceGrid options={animalOpts} value={filters.animals} onChange={(v) => set('animals', v)} multi />
         </View>
 
         <View style={{ gap: 10 }}>
-          <SectionLabel>Situation</SectionLabel>
-          <ChoiceGrid options={sitOpts} value={filters.situation} onChange={(v) => set('situation', v)} />
+          <SectionLabel>Situation (Mehrfachauswahl)</SectionLabel>
+          <ChoiceGrid options={sitOpts} value={filters.situations} onChange={(v) => set('situations', v)} multi />
         </View>
 
         <View style={{ gap: 10 }}>
-          <SectionLabel>Bezirk</SectionLabel>
-          <ChoiceGrid options={distOpts} value={filters.district} onChange={(v) => set('district', v)} />
+          <SectionLabel>Bezirk (Mehrfachauswahl)</SectionLabel>
+          <ChoiceGrid options={distOpts} value={filters.districts} onChange={(v) => set('districts', v)} multi />
         </View>
 
         <View style={{ gap: 10 }}>
@@ -51,12 +56,12 @@ export default function SearchScreen({ navigation }) {
           <ChoiceGrid options={SPECIALTIES} value={filters.specialties} onChange={(v) => set('specialties', v)} multi />
         </View>
 
-        <SwitchRow
-          title="Nur aktuell bestätigte Praxen"
-          sub="Blendet graue (nicht bestätigte) Einträge aus."
-          on={filters.onlyConfirmed}
-          onToggle={(v) => set('onlyConfirmed', v)}
-        />
+        <View style={{ gap: 10 }}>
+          <SectionLabel>Weitere Filter</SectionLabel>
+          {extras.map(([key, title, sub]) => (
+            <SwitchRow key={key} title={title} sub={sub} on={filters[key]} onToggle={(v) => set(key, v)} />
+          ))}
+        </View>
       </ScrollView>
 
       <View style={st.sticky}>

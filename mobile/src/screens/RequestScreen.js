@@ -4,21 +4,24 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-nati
 import { C, S } from '../theme';
 import { Card, Notice, Btn, Field, Input, ChoiceGrid, H2, P, toast } from '../components';
 import { VNIcon, ANIMAL_ICON, SERVICE_ICON } from '../icons';
-import { ANIMALS, SITUATIONS, DISTRICTS } from '../data';
+import { ANIMALS, SITUATIONS, DISTRICTS, ANIMAL_LABEL, SERVICE_LABEL } from '../data';
 import { useAppState } from '../lib/AdminContext';
+import { useChats } from '../lib/ChatContext';
 import { callPractice } from './ResultsScreen';
 
 export default function RequestScreen({ route, navigation }) {
   const { data, filters, auth } = useAppState();
+  const { createChat } = useChats();
   const p = route.params?.practiceId ? data.PRACTICES.find((x) => x.id === route.params.practiceId) : null;
   const loggedIn = auth && auth.role;
   const [sent, setSent] = React.useState(false);
   const [err, setErr] = React.useState({});
+  const [chatId, setChatId] = React.useState(null);
   const [form, setForm] = React.useState({
     name: '', phone: '',
-    animal: filters.animal || null,
-    situation: filters.situation || null,
-    district: filters.district || (p ? p.district : null),
+    animal: (filters.animals && filters.animals[0]) || null,
+    situation: (filters.situations && filters.situations[0]) || null,
+    district: (filters.districts && filters.districts[0]) || (p ? p.district : null),
     message: '',
     agree: false,
   });
@@ -31,8 +34,25 @@ export default function RequestScreen({ route, navigation }) {
     else if ((form.phone.match(/\d/g) || []).length < 6) e.phone = 'Bitte gültige Telefonnummer eingeben (für den Rückruf der Praxis).';
     if (!form.agree) e.agree = 'Bitte bestätigen Sie den Hinweis.';
     setErr(e);
-    if (Object.keys(e).length === 0) { setSent(true); toast('Anfrage übermittelt.', 'success'); }
-    else toast('Bitte prüfen Sie die markierten Felder.', 'error');
+    if (Object.keys(e).length === 0) {
+      const parts = [];
+      if (form.animal) parts.push(ANIMAL_LABEL[form.animal]);
+      if (form.situation) parts.push(SERVICE_LABEL[form.situation]);
+      const firstMsg = form.message.trim() || 'Guten Tag, ich hätte gern einen Termin.';
+      const id = createChat({
+        role: 'owner',
+        title: p ? p.name : 'Neue Anfrage',
+        sub: [form.district, ...parts].filter(Boolean).join(' · '),
+        animal: form.animal || 'other',
+        color: '#0f9b8e',
+        icon: form.animal ? ANIMAL_ICON[form.animal] : 'chat',
+        labels: ['tiere'],
+        messages: [{ from: 'owner', text: firstMsg, time: 'jetzt' }],
+      });
+      setChatId(id);
+      setSent(true);
+      toast('Anfrage gesendet — als Chat gespeichert.', 'success');
+    } else toast('Bitte prüfen Sie die markierten Felder.', 'error');
   };
 
   if (sent) {
@@ -42,11 +62,12 @@ export default function RequestScreen({ route, navigation }) {
           <View style={st.okIcon}><VNIcon.check s={30} c={C.green} /></View>
           <H2 style={{ marginTop: 10 }}>Vielen Dank!</H2>
           <P style={{ marginTop: 8, textAlign: 'center' }}>
-            Ihre Anfrage{p ? ' an ' + p.name : ''} wurde übermittelt. <Text style={{ fontWeight: '700' }}>Bei akuten Notfällen nehmen Sie bitte zusätzlich telefonisch Kontakt auf</Text> — eine Anfrage ersetzt keinen Anruf.
+            Ihre Anfrage{p ? ' an ' + p.name : ''} wurde als <Text style={{ fontWeight: '700' }}>neuer Chat</Text> gespeichert. <Text style={{ fontWeight: '700' }}>Bei akuten Notfällen bitte zusätzlich telefonisch Kontakt aufnehmen.</Text>
           </P>
           <View style={{ gap: 8, marginTop: 20, alignSelf: 'stretch' }}>
-            {p ? <Btn label={p.name + ' anrufen'} icon="phone" block onPress={() => callPractice(p)} /> : null}
-            <Btn label="Zurück zu den Ergebnissen" variant="secondary" block onPress={() => navigation.navigate('Results')} />
+            <Btn label="Zum Chat" icon="chat" block onPress={() => navigation.navigate('ChatThread', { chatId })} />
+            {p ? <Btn label={p.name + ' anrufen'} icon="phone" variant="secondary" block onPress={() => callPractice(p)} /> : null}
+            <Btn label="Zurück zu den Ergebnissen" variant="ghost" block onPress={() => navigation.navigate('Results')} />
           </View>
         </Card>
       </ScrollView>

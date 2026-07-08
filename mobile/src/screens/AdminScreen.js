@@ -2,14 +2,16 @@
 import React from 'react';
 import { View, ScrollView, StyleSheet } from 'react-native';
 import { C, S } from '../theme';
-import { Card, Notice, Btn, Field, Input, SwitchRow, H2, P, Meta, toast } from '../components';
+import { Card, Notice, Btn, Field, Input, SwitchRow, SectionLabel, H2, P, Meta, toast } from '../components';
 import { VNIcon } from '../icons';
 import { checkAdminLogin } from '../lib/admin';
 import { useAppState } from '../lib/AdminContext';
+import { useChats } from '../lib/ChatContext';
 import { PRACTICES, CHATS_SEED } from '../data';
 
 export default function AdminScreen({ navigation }) {
   const { hideTestData, setHideTestData, adminLoggedIn, setAdminLoggedIn } = useAppState();
+  const { settings, setSetting } = useChats();
   const [user, setUser] = React.useState('');
   const [pw, setPw] = React.useState('');
   const [err, setErr] = React.useState('');
@@ -63,6 +65,13 @@ export default function AdminScreen({ navigation }) {
         Dieser Schalter wirkt nur auf diesem Gerät (AsyncStorage). Andere Nutzer:innen sehen weiterhin die Testdaten.
         Ein globaler Schalter für alle würde ein Backend (z. B. Supabase, kostenloser Tarif, eigenes Konto nötig) erfordern — bewusst nicht eingebaut.
       </Notice>
+
+      <View style={{ gap: 10 }}>
+        <SectionLabel>Auto-Antwort-Bot (Demo)</SectionLabel>
+        <SwitchRow title="Automatische Antworten" sub="Wenn du schreibst, antwortet die Gegenseite automatisch (mit Tipp-Animation)." on={settings.botEnabled} onToggle={(v) => { setSetting('botEnabled', v); toast(v ? 'Bot aktiviert.' : 'Bot deaktiviert.', 'success'); }} />
+        <SwitchRow title="Tipp-Animation (3 Punkte)" sub={'Zeigt Punkte, während die Gegenseite tippt.'} on={settings.botTyping} onToggle={(v) => setSetting('botTyping', v)} />
+        <SwitchRow title="Begrüßung beim ersten Öffnen" sub="Leerer Chat wird automatisch begrüßt." on={settings.botGreeting} onToggle={(v) => setSetting('botGreeting', v)} />
+      </View>
 
       <Notice type="warn">Zugangsdaten sind im Code hinterlegt (src/lib/admin.js) — nach dem Testen ändern!</Notice>
 

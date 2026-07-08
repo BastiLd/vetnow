@@ -11,7 +11,7 @@ export function AppStateProvider({ children }) {
   const [adminLoggedIn, setLogged] = React.useState(false);
   const [ready, setReady] = React.useState(false);
   const [auth, setAuth] = React.useState({ role: null, name: '' });
-  const [filters, setFilters] = React.useState({ animal: null, situation: null, district: null, specialties: [], onlyConfirmed: false });
+  const [filters, setFilters] = React.useState({ animals: [], situations: [], districts: [], specialties: [], onlyConfirmed: false, onlyGreen: false, housecall: false, is24h: false });
 
   React.useEffect(() => {
     Promise.all([loadHideTestData(), loadAdminLoggedIn()]).then(([h, a]) => {

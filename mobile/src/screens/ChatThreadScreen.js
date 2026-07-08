@@ -2,7 +2,7 @@
    mit Header-Offset), Bild-Anhang, Abschlussnotizen, Sterne-Bewertung.
    Nutzt den neuen Chat-Store (useChats) über chatId. */
 import React from 'react';
-import { View, Text, TouchableOpacity, TextInput, ScrollView, Image, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, ScrollView, Image, Animated, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -10,13 +10,38 @@ import { C, R } from '../theme';
 import { Meta, StarRating, toast } from '../components';
 import { VNIcon } from '../icons';
 import { Glyph } from './ChatsScreen';
+import { botReply, botGreeting } from '../data';
 import { useChats } from '../lib/ChatContext';
+
+/* Animierte 3-Punkte-Tippanzeige */
+function TypingDots() {
+  const vals = React.useRef([new Animated.Value(0.4), new Animated.Value(0.4), new Animated.Value(0.4)]).current;
+  React.useEffect(() => {
+    const loops = vals.map((v, i) => Animated.loop(Animated.sequence([
+      Animated.delay(i * 160),
+      Animated.timing(v, { toValue: 1, duration: 300, useNativeDriver: true }),
+      Animated.timing(v, { toValue: 0.4, duration: 300, useNativeDriver: true }),
+      Animated.delay((2 - i) * 160),
+    ])));
+    loops.forEach((l) => l.start());
+    return () => loops.forEach((l) => l.stop());
+  }, []);
+  return (
+    <View style={{ flexDirection: 'row', gap: 4, paddingVertical: 4 }}>
+      {vals.map((v, i) => <Animated.View key={i} style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: C.ink3, opacity: v }} />)}
+    </View>
+  );
+}
 
 export default function ChatThreadScreen({ route, navigation }) {
   const { chatId, quickReplies } = route.params;
-  const { chatById, labels, addMessage, markRead } = useChats();
+  const { chatById, labels, addMessage, markRead, settings } = useChats();
   const chat = chatById(chatId);
   const me = chat && chat.role === 'owner' ? 'owner' : 'clinic';
+  const other = me === 'owner' ? 'clinic' : 'owner';
+  const [typing, setTyping] = React.useState(false);
+  const handledRef = React.useRef('');
+  const timersRef = React.useRef([]);
 
   const [draft, setDraft] = React.useState('');
   const [pendingImg, setPendingImg] = React.useState(null);
@@ -26,6 +51,31 @@ export default function ChatThreadScreen({ route, navigation }) {
 
   React.useEffect(() => { if (chat) markRead(chatId); }, [chatId]);
   React.useEffect(() => { if (chat) navigation.setOptions({ title: chat.title }); }, [chat && chat.title]);
+
+  // Auto-Antwort-Bot: reagiert, wenn die letzte Nachricht von MIR ist (oder Chat leer → Begrüßung)
+  const msgLen = chat ? chat.messages.length : 0;
+  React.useEffect(() => {
+    if (!chat || !settings || !settings.botEnabled) return;
+    const arr = chat.messages;
+    const lastM = arr[arr.length - 1];
+    const sig = chat.id + ':' + arr.length + ':' + (lastM ? lastM.from + (lastM.type || '') : 'empty');
+    if (handledRef.current === sig) return;
+    const schedule = (fn, delay) => { const t = setTimeout(fn, delay); timersRef.current.push(t); };
+    const withTyping = (produce) => {
+      if (settings.botTyping) { setTyping(true); schedule(() => { setTyping(false); addMessage(chat.id, produce()); }, 1100 + Math.random() * 700); }
+      else schedule(() => addMessage(chat.id, produce()), 500);
+    };
+    if (arr.length === 0 && settings.botGreeting) {
+      handledRef.current = sig;
+      withTyping(() => ({ from: other, text: botGreeting(other), time: 'jetzt' }));
+    } else if (lastM && lastM.from === me && lastM.type !== 'note') {
+      handledRef.current = sig;
+      const replyText = lastM.type === 'image' ? 'Danke fürs Bild! Wir sehen es uns an.' : botReply(lastM.text, other);
+      withTyping(() => ({ from: other, text: replyText, time: 'jetzt' }));
+    }
+    return () => { timersRef.current.forEach(clearTimeout); timersRef.current = []; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [msgLen, chatId, settings && settings.botEnabled]);
 
   if (!chat) {
     return (
@@ -106,6 +156,11 @@ export default function ChatThreadScreen({ route, navigation }) {
             </View>
           );
         })}
+        {typing ? (
+          <View style={{ alignItems: 'flex-start' }}>
+            <View style={[st.bubble, st.bubbleOther, { paddingVertical: 6, paddingHorizontal: 12 }]}><TypingDots /></View>
+          </View>
+        ) : null}
       </ScrollView>
 
       {showFeedback ? (
