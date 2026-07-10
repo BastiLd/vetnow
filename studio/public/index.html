@@ -6,29 +6,28 @@
   <title>VetNow Studio</title>
   <link rel="stylesheet" href="style.css" />
 </head>
-<body>
+<body data-theme="dark" data-density="normal">
   <header class="topbar">
-    <div class="brand">
+    <div class="brand" id="brandHome" title="Zur Übersicht">
       <span class="brand-mark">🐾</span>
       <div>
         <div class="brand-name">VetNow <span>Studio</span></div>
-        <div class="brand-sub">Control-Panel · Apps bauen, previewen & starten</div>
+        <div class="brand-sub">Apps bauen · previewen · starten — alles an einem Ort</div>
       </div>
     </div>
+    <nav class="tabs" id="tabs">
+      <button data-tab="apps" class="is-on">🗂️ Apps</button>
+      <button data-tab="ai">🧠 KI</button>
+      <button data-tab="settings">⚙️ Einstellungen</button>
+      <button data-tab="system">🖥️ System<span class="update-dot" id="updateDot" style="display:none"></span></button>
+    </nav>
     <div class="top-actions">
       <span class="host-chip" id="hostChip">…</span>
-      <button class="btn ghost" id="btnGroups">Gruppen</button>
-      <button class="btn primary" id="btnAddApp">+ App</button>
     </div>
   </header>
 
-  <main class="wrap" id="groupsWrap"></main>
+  <main class="wrap" id="view"></main>
 
-  <div class="empty" id="emptyHint" style="display:none">
-    <p>Noch keine Apps. Füge deine erste App hinzu.</p>
-  </div>
-
-  <!-- Modals -->
   <div class="modal-bg" id="modalBg" style="display:none">
     <div class="modal" id="modal"></div>
   </div>

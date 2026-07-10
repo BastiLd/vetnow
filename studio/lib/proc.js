@@ -2,13 +2,17 @@
    (z. B. Expo/Metro) und führt einmalige Kommandos aus (Build, SDK-Wechsel),
    mit gepuffertem Log pro App. */
 const { spawn } = require('child_process');
+const store = require('./store');
 
 const running = {};   // id -> { proc, kind, port, startedAt }
 const logs = {};      // id -> [ {t, line} ]  (Ringpuffer)
 const oneShot = {};   // id -> { busy, task }
 
-const MAX_LINES = 400;
 const isWin = process.platform === 'win32';
+
+function maxLines() {
+  try { return Math.max(50, parseInt(store.readSettings().logLines, 10) || 400); } catch { return 400; }
+}
 
 function pushLog(id, line) {
   if (!logs[id]) logs[id] = [];
@@ -16,7 +20,8 @@ function pushLog(id, line) {
     if (l.length === 0) return;
     logs[id].push({ t: Date.now(), line: l });
   });
-  if (logs[id].length > MAX_LINES) logs[id] = logs[id].slice(-MAX_LINES);
+  const max = maxLines();
+  if (logs[id].length > max) logs[id] = logs[id].slice(-max);
 }
 
 function getLogs(id) { return logs[id] || []; }

@@ -1,8 +1,8 @@
 {
   "name": "vetnow-studio",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
-  "description": "VetNow Studio — Control-Panel: Apps bauen, Web-Vorschau, Expo-Server & QR-Codes, gruppierbar.",
+  "description": "VetNow Studio 2.0 — Control-Panel: Apps bauen/previewen/starten, klickbare Gruppen, durchsuchbare Einstellungen, Ollama-KI-Shop, Selbst-Update.",
   "type": "commonjs",
   "main": "server.js",
   "scripts": {

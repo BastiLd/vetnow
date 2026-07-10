@@ -1,12 +1,12 @@
 {
   "groups": [
-    { "id": "vetnow", "name": "VetNow Kärnten", "color": "#0f9b8e" },
-    { "id": "andere", "name": "Weitere Apps", "color": "#2e6f9e" }
+    { "id": "vetnow", "name": "VetNow Kärnten", "color": "#0f9b8e", "icon": "🐾", "description": "Notfall-Tierarzt-Finder — Web, iPhone & Extension" },
+    { "id": "andere", "name": "Weitere Projekte", "color": "#2e6f9e", "icon": "🗂️", "description": "Eigene Apps hinzufügen (auch aus fremden Git-Repos)" }
   ],
   "apps": [
     {
       "id": "vetnow-web-clean",
-      "name": "VetNow — Web (sauber, ohne Testdaten)",
+      "name": "Web-App (sauber)",
       "group": "vetnow",
       "color": "#0f9b8e",
       "icon": "🐾",
@@ -18,7 +18,7 @@
     },
     {
       "id": "vetnow-web-demo",
-      "name": "VetNow — Web (Demo mit Testdaten)",
+      "name": "Web-App (Demo + Bot)",
       "group": "vetnow",
       "color": "#19b3a4",
       "icon": "🧪",
@@ -29,19 +29,32 @@
       "buildCmd": "npm ci && npx vite build --base=/vetnow-demo/ --outDir dist-demo"
     },
     {
-      "id": "vetnow-mobile",
-      "name": "VetNow — iPhone-App (Expo)",
+      "id": "vetnow-mobile-clean",
+      "name": "iPhone-App (sauber)",
       "group": "vetnow",
       "color": "#0c7d72",
       "icon": "📱",
       "kind": "expo",
       "expoDir": "mobile",
       "expoSdk": "54",
-      "expoPort": 8081
+      "expoPort": 8081,
+      "env": { "EXPO_PUBLIC_VN_CLEAN": "true" }
+    },
+    {
+      "id": "vetnow-mobile-demo",
+      "name": "iPhone-App (Demo + Bot)",
+      "group": "vetnow",
+      "color": "#2e6f9e",
+      "icon": "🧫",
+      "kind": "expo",
+      "expoDir": "mobile",
+      "expoSdk": "54",
+      "expoPort": 8082,
+      "env": {}
     },
     {
       "id": "vetnow-extension",
-      "name": "VetNow — Chrome-Extension",
+      "name": "Chrome-Extension",
       "group": "vetnow",
       "color": "#8a5d05",
       "icon": "🧩",

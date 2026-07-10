@@ -21,9 +21,11 @@ services:
       STUDIO_DATA_DIR: "/data"
       STUDIO_PORT: "3000"
       EXPO_NO_TELEMETRY: "1"
+      OLLAMA_URL: "http://192.168.68.10:11434"   # Ollama auf demselben Server (für den KI-Bot)
     ports:
-      - "3000:3000"     # Studio-Oberfläche
-      - "8081:8081"     # Expo/Metro (für Expo Go)
+      - "3000:3000"     # Studio-Oberfläche + Web-Vorschauen
+      - "8081:8081"     # Expo/Metro — iPhone-App (sauber)
+      - "8082:8082"     # Expo/Metro — iPhone-App (Demo + Bot)
     volumes:
       - /DATA/AppData/vetnow-studio/repo:/repo
       - /DATA/AppData/vetnow-studio/data:/data
