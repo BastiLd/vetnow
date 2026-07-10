@@ -3,11 +3,12 @@
 import React from 'react';
 import { buildVNData } from '../data';
 import { loadHideTestData, storeHideTestData, loadAdminLoggedIn, storeAdminLoggedIn } from './admin';
+import { IS_CLEAN } from './config';
 
 const AppStateContext = React.createContext(null);
 
 export function AppStateProvider({ children }) {
-  const [hideTestData, setHide] = React.useState(false);
+  const [hideTestData, setHide] = React.useState(IS_CLEAN);
   const [adminLoggedIn, setLogged] = React.useState(false);
   const [ready, setReady] = React.useState(false);
   const [auth, setAuth] = React.useState({ role: null, name: '' });
@@ -15,14 +16,15 @@ export function AppStateProvider({ children }) {
 
   React.useEffect(() => {
     Promise.all([loadHideTestData(), loadAdminLoggedIn()]).then(([h, a]) => {
-      setHide(h); setLogged(a); setReady(true);
+      // Saubere Version: Testdaten sind IMMER ausgeblendet (Flag gewinnt).
+      setHide(IS_CLEAN || h); setLogged(a); setReady(true);
     });
   }, []);
 
-  const setHideTestData = (on) => { setHide(on); storeHideTestData(on); };
+  const setHideTestData = (on) => { setHide(IS_CLEAN || on); storeHideTestData(on); };
   const setAdminLoggedIn = (on) => { setLogged(on); storeAdminLoggedIn(on); };
 
-  const data = React.useMemo(() => buildVNData(hideTestData), [hideTestData]);
+  const data = React.useMemo(() => buildVNData(IS_CLEAN || hideTestData), [hideTestData]);
 
   /* ---- Termin-Store (Praxis-Kalender) ---- */
   const [clinicAppts, setClinicAppts] = React.useState({});
@@ -51,7 +53,7 @@ export function AppStateProvider({ children }) {
   const value = React.useMemo(
     () => ({
       hideTestData, setHideTestData, adminLoggedIn, setAdminLoggedIn, ready, data, auth, setAuth, filters, setFilters,
-      clinicAppts, setApptStatus, completeAppt,
+      clinicAppts, setApptStatus, completeAppt, isClean: IS_CLEAN,
     }),
     [hideTestData, adminLoggedIn, ready, data, auth, filters, clinicAppts, setApptStatus, completeAppt]
   );

@@ -4,6 +4,7 @@ import React from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CHATS_SEED, CHAT_LABELS_SEED, CHAT_SETTINGS_DEFAULT } from '../data';
 import { useAppState } from './AdminContext';
+import { IS_CLEAN } from './config';
 
 const K_CHATS = 'vn_chats_v1';
 const K_LABELS = 'vn_labels_v1';
@@ -14,9 +15,9 @@ const ChatContext = React.createContext(null);
 
 export function ChatProvider({ children }) {
   const { hideTestData } = useAppState();
-  const [settings, setSettings] = React.useState(CHAT_SETTINGS_DEFAULT);
+  const [settings, setSettings] = React.useState(() => (IS_CLEAN ? { ...CHAT_SETTINGS_DEFAULT, autoSeed: false } : CHAT_SETTINGS_DEFAULT));
   const [labels, setLabels] = React.useState(() => CHAT_LABELS_SEED.map((l) => ({ ...l })));
-  const [chats, setChats] = React.useState(() => CHATS_SEED.map((c) => ({ ...c, messages: c.messages.map((m) => ({ ...m })) })));
+  const [chats, setChats] = React.useState(() => (IS_CLEAN ? [] : CHATS_SEED.map((c) => ({ ...c, messages: c.messages.map((m) => ({ ...m })) }))));
   const [ready, setReady] = React.useState(false);
 
   // Laden
@@ -27,8 +28,9 @@ export function ChatProvider({ children }) {
           AsyncStorage.getItem(K_SETTINGS), AsyncStorage.getItem(K_LABELS), AsyncStorage.getItem(K_CHATS),
         ]);
         const st = { ...CHAT_SETTINGS_DEFAULT, ...(s ? JSON.parse(s) : {}) };
+        if (IS_CLEAN) st.autoSeed = false; // saubere Version: keine vorgefertigten Chats
         setSettings(st);
-        if (l) setLabels(JSON.parse(l)); else setLabels(st.autoSeed ? CHAT_LABELS_SEED.map((x) => ({ ...x })) : []);
+        if (l) setLabels(JSON.parse(l)); else setLabels(CHAT_LABELS_SEED.map((x) => ({ ...x })));
         if (c) setChats(JSON.parse(c)); else setChats(st.autoSeed ? CHATS_SEED.map((x) => ({ ...x, messages: x.messages.map((m) => ({ ...m })) })) : []);
       } catch { /* seed bleibt */ }
       setReady(true);

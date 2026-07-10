@@ -10,7 +10,7 @@ import { C, R } from '../theme';
 import { Meta, StarRating, toast } from '../components';
 import { VNIcon } from '../icons';
 import { Glyph } from './ChatsScreen';
-import { botReply, botGreeting } from '../data';
+import { botConversationReply, botGreetingText, botImageReply } from '../bot';
 import { useChats } from '../lib/ChatContext';
 
 /* Animierte 3-Punkte-Tippanzeige */
@@ -52,7 +52,8 @@ export default function ChatThreadScreen({ route, navigation }) {
   React.useEffect(() => { if (chat) markRead(chatId); }, [chatId]);
   React.useEffect(() => { if (chat) navigation.setOptions({ title: chat.title }); }, [chat && chat.title]);
 
-  // Auto-Antwort-Bot: reagiert, wenn die letzte Nachricht von MIR ist (oder Chat leer → Begrüßung)
+  // Auto-Antwort-Bot 2.0: reagiert, wenn die letzte Nachricht von MIR ist
+  // (oder Chat leer → Begrüßung). Kann mehrteilige Antworten senden.
   const msgLen = chat ? chat.messages.length : 0;
   React.useEffect(() => {
     if (!chat || !settings || !settings.botEnabled) return;
@@ -60,20 +61,31 @@ export default function ChatThreadScreen({ route, navigation }) {
     const lastM = arr[arr.length - 1];
     const sig = chat.id + ':' + arr.length + ':' + (lastM ? lastM.from + (lastM.type || '') : 'empty');
     if (handledRef.current === sig) return;
+
+    const isGreeting = arr.length === 0 && settings.botGreeting;
+    const isReply = lastM && lastM.from === me && lastM.type !== 'note';
+    if (!isGreeting && !isReply) return;
+    handledRef.current = sig;
+
     const schedule = (fn, delay) => { const t = setTimeout(fn, delay); timersRef.current.push(t); };
-    const withTyping = (produce) => {
-      if (settings.botTyping) { setTyping(true); schedule(() => { setTyping(false); addMessage(chat.id, produce()); }, 1100 + Math.random() * 700); }
-      else schedule(() => addMessage(chat.id, produce()), 500);
-    };
-    if (arr.length === 0 && settings.botGreeting) {
-      handledRef.current = sig;
-      withTyping(() => ({ from: other, text: botGreeting(other), time: 'jetzt' }));
-    } else if (lastM && lastM.from === me && lastM.type !== 'note') {
-      handledRef.current = sig;
-      const replyText = lastM.type === 'image' ? 'Danke fürs Bild! Wir sehen es uns an.' : botReply(lastM.text, other);
-      withTyping(() => ({ from: other, text: replyText, time: 'jetzt' }));
-    }
-    return () => { timersRef.current.forEach(clearTimeout); timersRef.current = []; };
+    const practiceName = chat.role === 'owner' ? chat.title : 'Tierarztpraxis Drautal';
+
+    let texts;
+    if (isGreeting) texts = [botGreetingText(other, practiceName)];
+    else if (lastM.type === 'image') texts = [botImageReply(other)];
+    else texts = botConversationReply({ messages: arr.slice(0, -1), userText: lastM.text || '', fromRole: other, practiceName }).texts;
+
+    // Mehrere Nachrichten nacheinander — Tipp-Dauer wächst mit Textlänge.
+    let delay = 120;
+    texts.forEach((txt) => {
+      const typeDur = settings.botTyping ? Math.min(2400, 650 + txt.length * 16) : 350;
+      if (settings.botTyping) schedule(() => setTyping(true), delay);
+      delay += typeDur;
+      schedule(() => { setTyping(false); addMessage(chat.id, { from: other, text: txt, time: 'jetzt' }); }, delay);
+      delay += 500;
+    });
+
+    return () => { setTyping(false); timersRef.current.forEach(clearTimeout); timersRef.current = []; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [msgLen, chatId, settings && settings.botEnabled]);
 

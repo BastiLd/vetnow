@@ -2,6 +2,7 @@
    Lebt im Konto-Tab-Stack; nach Login zeigt KontoHome die Konto-Übersicht. */
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { C, S, R } from '../theme';
 import { Card, Btn, Field, Input, ChoiceGrid, H2, P, Meta, toast } from '../components';
 import { VNIcon, ANIMAL_ICON } from '../icons';
@@ -12,8 +13,10 @@ const emailOk = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 const scrollProps = { automaticallyAdjustKeyboardInsets: true, keyboardShouldPersistTaps: 'handled' };
 
 function Hero() {
+  // Safe-Area: Logo darf nie von Notch/Statusleiste verdeckt werden
+  const insets = useSafeAreaInsets();
   return (
-    <View style={st.hero}>
+    <View style={[st.hero, { paddingTop: 28 + insets.top }]}>
       <View style={st.brandMark}><VNIcon.paw2 s={24} c="#fff" /></View>
       <Text style={st.brandName}>VetNow <Text style={{ color: C.teal100 }}>Kärnten</Text></Text>
     </View>

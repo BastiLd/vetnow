@@ -10,7 +10,7 @@ import { useChats } from '../lib/ChatContext';
 import { PRACTICES, CHATS_SEED } from '../data';
 
 export default function AdminScreen({ navigation }) {
-  const { hideTestData, setHideTestData, adminLoggedIn, setAdminLoggedIn } = useAppState();
+  const { hideTestData, setHideTestData, adminLoggedIn, setAdminLoggedIn, isClean } = useAppState();
   const { settings, setSetting } = useChats();
   const [user, setUser] = React.useState('');
   const [pw, setPw] = React.useState('');
@@ -54,12 +54,16 @@ export default function AdminScreen({ navigation }) {
         <P style={{ marginTop: 5 }}>Einstellungen für dieses Gerät.</P>
       </View>
 
-      <SwitchRow
-        title="Testdaten ausblenden"
-        sub={`Blendet alle Demo-Einträge aus (${testCount} Praxen, ${chatCount} Konversationen samt Demo-Terminen).`}
-        on={hideTestData}
-        onToggle={(v) => { setHideTestData(v); toast(v ? 'Testdaten werden ausgeblendet.' : 'Testdaten werden wieder angezeigt.', 'success'); }}
-      />
+      {isClean ? (
+        <Notice type="info">Dies ist die <Text style={{ fontWeight: '700' }}>saubere Version</Text> — Testdaten sind fest deaktiviert (Demo-Version über das Studio auf Port 8082).</Notice>
+      ) : (
+        <SwitchRow
+          title="Testdaten ausblenden"
+          sub={`Blendet alle Demo-Einträge aus (${testCount} Praxen, ${chatCount} Konversationen samt Demo-Terminen).`}
+          on={hideTestData}
+          onToggle={(v) => { setHideTestData(v); toast(v ? 'Testdaten werden ausgeblendet.' : 'Testdaten werden wieder angezeigt.', 'success'); }}
+        />
+      )}
 
       <Notice type="info">
         Dieser Schalter wirkt nur auf diesem Gerät (AsyncStorage). Andere Nutzer:innen sehen weiterhin die Testdaten.
