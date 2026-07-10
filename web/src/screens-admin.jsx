@@ -5,7 +5,74 @@ import { VNIcon, Switch, toast } from './components.jsx';
 import { checkAdminLogin } from './lib/admin.js';
 import { useAdmin } from './lib/adminContext.jsx';
 import { useChats } from './lib/chats.jsx';
+import { aiStatus, aiModels } from './lib/ai.js';
 import { PRACTICES, CHATS_SEED } from './data.js';
+
+/* ---- KI-Antworten (Ollama über VetNow Studio) ---- */
+function AiSection({ settings, setSetting }) {
+  const [status, setStatus] = React.useState(null);   // null=unbekannt
+  const [models, setModels] = React.useState([]);
+  const [checking, setChecking] = React.useState(false);
+
+  const check = async () => {
+    setChecking(true);
+    const s = await aiStatus(settings.aiBaseUrl);
+    setStatus(s);
+    if (s && s.ok) setModels(await aiModels(settings.aiBaseUrl));
+    setChecking(false);
+    toast(s && s.ok ? 'KI verbunden: ' + (s.ollama || 'Ollama') : 'Keine KI erreichbar — läuft die App über das Studio?', s && s.ok ? 'success' : 'error');
+  };
+
+  return (
+    <div>
+      <div className="section-label" style={{ marginBottom: 10 }}>KI-Antworten (Ollama über VetNow Studio)</div>
+      <div className="stack-3">
+        <button className="switch-row" style={{ width: '100%', textAlign: 'left' }}
+          onClick={() => { const ai = settings.botMode !== 'ai'; setSetting('botMode', ai ? 'ai' : 'smart'); toast(ai ? 'Bot nutzt jetzt die KI (Ollama).' : 'Bot nutzt den eingebauten Modus.', 'success'); }}>
+          <div style={{ flex: 1 }}>
+            <div className="section-label">Echte KI-Antworten verwenden</div>
+            <div className="vn-meta" style={{ marginTop: 3 }}>
+              Antworten kommen von einem lokalen Ollama-Modell (über das Studio auf deinem Server).
+              Nicht erreichbar (z.&nbsp;B. auf GitHub Pages)? Dann übernimmt automatisch der eingebaute Bot.
+            </div>
+          </div>
+          <Switch on={settings.botMode === 'ai'} />
+        </button>
+
+        {settings.botMode === 'ai' && (
+          <div className="card card-pad stack-3">
+            <div className="field">
+              <label>KI-Adresse (leer = automatisch übers Studio)</label>
+              <input className="input" value={settings.aiBaseUrl} onChange={(e) => setSetting('aiBaseUrl', e.target.value)} placeholder="/api/ai oder http://192.168.68.10:3000/api/ai" />
+            </div>
+            <div className="field">
+              <label>Modell {models.length > 0 ? '(installiert auf deinem Server)' : ''}</label>
+              {models.length > 0 ? (
+                <select className="selectbox" value={settings.aiModel} onChange={(e) => setSetting('aiModel', e.target.value)}>
+                  <option value="">Standard des Studios</option>
+                  {models.map((m) => <option key={m.name} value={m.name}>{m.name}</option>)}
+                </select>
+              ) : (
+                <input className="input" value={settings.aiModel} onChange={(e) => setSetting('aiModel', e.target.value)} placeholder="z. B. gemma2:2b (leer = Studio-Standard)" />
+              )}
+            </div>
+            <button className="btn btn-secondary btn-block" onClick={check} disabled={checking}>
+              {checking ? 'Prüfe…' : 'Verbindung testen'}
+            </button>
+            {status && (
+              <div className={'notice ' + (status.ok ? 'notice-info' : 'notice-warn')}>
+                <span className="ni"><VNIcon.info s={16} /></span>
+                <div>{status.ok
+                  ? `Verbunden — ${models.length} Modell(e) verfügbar. Modelle verwaltest du im Studio unter „KI".`
+                  : 'Keine Verbindung. Die KI funktioniert nur, wenn die App über das VetNow Studio läuft (http://SERVER:3000/…) und Ollama auf dem Server installiert ist.'}</div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function AdminLogin({ onSuccess }) {
   const [user, setUser] = React.useState('');
@@ -110,8 +177,14 @@ export function ScreenAdmin({ nav }) {
               <div style={{ flex: 1 }}><div className="section-label">Begrüßung beim ersten Öffnen</div><div className="vn-meta" style={{ marginTop: 3 }}>Leerer Chat wird automatisch begrüßt.</div></div>
               <Switch on={settings.botGreeting} />
             </button>
+            <button className="switch-row" style={{ width: '100%', textAlign: 'left' }} onClick={() => setSetting('agentEnabled', !settings.agentEnabled)}>
+              <div style={{ flex: 1 }}><div className="section-label">KI-Agent-Panel</div><div className="vn-meta" style={{ marginTop: 3 }}>Schwebender 🤖-Button: Agent führt Aufgaben sichtbar in der App aus (z. B. „Tag simulieren").</div></div>
+              <Switch on={settings.agentEnabled} />
+            </button>
           </div>
         </div>
+
+        <AiSection settings={settings} setSetting={setSetting} />
 
         <div className="notice notice-warn">
           <span className="ni"><VNIcon.alert s={16} /></span>

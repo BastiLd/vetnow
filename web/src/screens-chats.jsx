@@ -3,7 +3,9 @@
    Label-Verwaltung, Einstellungen und Thread-Ansicht. */
 import React from 'react';
 import { VNIcon, AnimalGlyph, Switch, toast } from './components.jsx';
-import { CHAT_ROLES, botReply, botGreeting } from './data.js';
+import { CHAT_ROLES } from './data.js';
+import { botConversationReply, botGreetingText, botImageReply } from './bot.js';
+import { aiChat, vetSystemPrompt, toAiMessages } from './lib/ai.js';
 import { useChats } from './lib/chats.jsx';
 
 const PALETTE = ['#0f9b8e', '#0c7d72', '#2e6f9e', '#16a34a', '#e3a008', '#dc2626', '#8a5d05', '#6c7d79', '#7c3aed', '#db2777'];
@@ -211,7 +213,9 @@ function ChatThread({ chat, onBack, addMessage, labels, settings }) {
   const timersRef = React.useRef([]);
   React.useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [chat.messages.length, typing]);
 
-  // Auto-Antwort-Bot: reagiert, wenn die letzte Nachricht von MIR ist (oder Chat leer → Begrüßung).
+  // Auto-Antwort-Bot 2.0: reagiert, wenn die letzte Nachricht von MIR ist
+  // (oder Chat leer → Begrüßung). Kann mehrteilige Antworten senden und
+  // optional Ollama (über das Studio) als KI-Backend nutzen.
   React.useEffect(() => {
     if (!settings || !settings.botEnabled) return;
     const msgs = chat.messages;
@@ -219,21 +223,56 @@ function ChatThread({ chat, onBack, addMessage, labels, settings }) {
     const sig = chat.id + ':' + msgs.length + ':' + (last ? last.from + last.type : 'empty');
     if (handledRef.current === sig) return;
 
-    const schedule = (fn, delay) => { const t = setTimeout(fn, delay); timersRef.current.push(t); };
-    const withTyping = (produce) => {
-      if (settings.botTyping) { setTyping(true); schedule(() => { setTyping(false); addMessage(chat.id, produce()); }, 1100 + Math.random() * 700); }
-      else schedule(() => addMessage(chat.id, produce()), 500);
+    const isGreeting = msgs.length === 0 && settings.botGreeting;
+    const isReply = last && last.from === me && last.type !== 'note';
+    if (!isGreeting && !isReply) return;
+    handledRef.current = sig;
+
+    let alive = true;
+    const schedule = (fn, delay) => { const t = setTimeout(() => { if (alive) fn(); }, delay); timersRef.current.push(t); };
+    const practiceName = chat.role === 'owner' ? chat.title : 'Tierarztpraxis Drautal';
+
+    // Mehrere Nachrichten hintereinander senden — Tipp-Dauer wächst mit Textlänge.
+    const sendTexts = (texts) => {
+      let delay = 120;
+      texts.forEach((txt) => {
+        const typeDur = settings.botTyping ? Math.min(2400, 650 + txt.length * 16) : 350;
+        if (settings.botTyping) schedule(() => setTyping(true), delay);
+        delay += typeDur;
+        schedule(() => { setTyping(false); addMessage(chat.id, { from: other, text: txt, time: 'jetzt' }); }, delay);
+        delay += 500;
+      });
     };
 
-    if (msgs.length === 0 && settings.botGreeting) {
-      handledRef.current = sig;
-      withTyping(() => ({ from: other, text: botGreeting(other), time: 'jetzt' }));
-    } else if (last && last.from === me && last.type !== 'note') {
-      handledRef.current = sig;
-      const replyText = last.type === 'image' ? 'Danke fürs Bild! Wir sehen es uns an.' : botReply(last.text, other);
-      withTyping(() => ({ from: other, text: replyText, time: 'jetzt' }));
-    }
-    return () => { timersRef.current.forEach(clearTimeout); timersRef.current = []; };
+    const builtInTexts = () => {
+      if (isGreeting) return [botGreetingText(other, practiceName)];
+      if (last.type === 'image') return [botImageReply(other)];
+      return botConversationReply({ messages: msgs.slice(0, -1), userText: last.text || '', fromRole: other, practiceName }).texts;
+    };
+
+    (async () => {
+      if (settings.botMode === 'ai') {
+        try {
+          if (settings.botTyping) setTyping(true);
+          const sys = { role: 'system', content: vetSystemPrompt(other, practiceName) };
+          const history = isGreeting
+            ? [sys, { role: 'user', content: '(Der Chat wurde gerade geöffnet — begrüße kurz und freundlich.)' }]
+            : [sys, ...toAiMessages(msgs, other, null)];
+          const text = await aiChat({ messages: history, model: settings.aiModel, aiBaseUrl: settings.aiBaseUrl });
+          if (!alive) return;
+          setTyping(false);
+          addMessage(chat.id, { from: other, text, time: 'jetzt' });
+          return;
+        } catch {
+          if (!alive) return;
+          setTyping(false);
+          // KI nicht erreichbar (z. B. GitHub Pages) → eingebauter Bot übernimmt
+        }
+      }
+      sendTexts(builtInTexts());
+    })();
+
+    return () => { alive = false; setTyping(false); timersRef.current.forEach(clearTimeout); timersRef.current = []; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chat.messages.length, chat.id, settings && settings.botEnabled]);
 

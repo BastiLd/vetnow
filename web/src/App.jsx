@@ -11,6 +11,7 @@ import { ScreenDashboard } from './screens-e.jsx';
 import { ScreenExtension } from './screens-ext.jsx';
 import { ScreenAdmin } from './screens-admin.jsx';
 import { ScreenChats } from './screens-chats.jsx';
+import { AgentPanel } from './agent.jsx';
 
 const SCREEN_META = {
   home:      { title: '', back: null },
@@ -127,6 +128,18 @@ export default function App({ initialScreen, initialId }) {
     if (bodyRef.current) bodyRef.current.scrollTop = 0;
   };
 
+  // KI-Agent steuert die App über Events (sichtbare Navigation + Filter setzen)
+  React.useEffect(() => {
+    const h = (e) => {
+      const d = e.detail || {};
+      if (d.action === 'nav') nav(d.name, d.opts);
+      if (d.action === 'filters') setFilters((f) => ({ ...f, ...d.filters }));
+    };
+    window.addEventListener('vn:agent', h);
+    return () => window.removeEventListener('vn:agent', h);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const showFooter = ['home', 'search', 'results', 'request'].includes(route.name);
   const chromeless = CHROMELESS.includes(route.name);
   const showBottomNav = !chromeless && !['dashboard', 'admin'].includes(route.name);
@@ -156,6 +169,7 @@ export default function App({ initialScreen, initialId }) {
         {showFooter && <LegalFooter nav={nav} />}
       </div>
       {showBottomNav && <MobileTabBar route={route} nav={nav} auth={auth} />}
+      <AgentPanel />
       <ToastHost />
     </div>
   );

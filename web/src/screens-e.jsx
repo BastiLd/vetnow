@@ -542,6 +542,13 @@ function DashboardInner({ D, me }) {
 
   React.useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
 
+  // KI-Agent kann sichtbar zwischen den Dashboard-Tabs wechseln
+  React.useEffect(() => {
+    const h = (e) => { const d = e.detail || {}; if (d.action === 'dashTab' && d.tab) setTab(d.tab); };
+    window.addEventListener('vn:agent', h);
+    return () => window.removeEventListener('vn:agent', h);
+  }, []);
+
   const setApptStatus = (dateIso, idx, status) => setAppts((m) => ({ ...m, [dateIso]: m[dateIso].map((a, i) => i === idx ? { ...a, status } : a) }));
   const completeAppt = (dateIso, idx, noteText) => {
     setAppts((m) => ({ ...m, [dateIso]: (m[dateIso] || []).map((a, i) => i === idx ? { ...a, status: 'done', note: noteText } : a) }));
