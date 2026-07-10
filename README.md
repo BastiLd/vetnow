@@ -16,15 +16,31 @@ Vier Bausteine, gleicher Funktionsumfang, gleiche Testdaten:
 
 **Live (saubere Version, ohne Testdaten):** https://bastild.github.io/vetnow/
 
-### Zwei Versionen
+### Vier Versionen (Web + iPhone, je sauber & Demo)
 
-- **Sauber** (`VITE_VN_CLEAN=true`): keine Testdaten — leer, zum Weitergeben an
-  Tester:innen. Das ist die öffentliche GitHub-Pages-Seite. Supabase lässt sich
-  später ohne großen Umbau anbinden (Seam in [web/src/lib/backend.js](web/src/lib/backend.js)).
-- **Demo** (ohne Flag): mit allen Testdaten (18 Praxen, vorgefertigte Chats) zum
-  Vorführen. Läuft lokal (`npm run dev`) und im Studio unter `/vetnow-demo/`.
+| Version | Wo | Inhalt |
+|---------|-----|--------|
+| Web **sauber** | GitHub Pages + Studio `/vetnow/` | keine Testdaten — zum Weitergeben |
+| Web **Demo + Bot** | Studio `/vetnow-demo/` | 18 Praxen, Chats, Auto-Antwort-Bot, KI-Agent |
+| iPhone **sauber** | Studio, Expo Port 8081 | `EXPO_PUBLIC_VN_CLEAN=true` |
+| iPhone **Demo + Bot** | Studio, Expo Port 8082 | volle Testdaten + Bot |
 
-Beide sind im **VetNow Studio** getrennt baubar/previewbar.
+Alle vier sind im **VetNow Studio** getrennte Karten — einzeln baubar/startbar,
+je mit QR-Code. Supabase lässt sich später anbinden
+(Seam in [web/src/lib/backend.js](web/src/lib/backend.js)).
+
+### Auto-Antwort-Bot & echte KI (Ollama)
+
+Der Chat-Bot (Demo-Versionen) versteht 20+ Anliegen (Notfall/Gift-Triage,
+Termine mit Slot-Gedächtnis, Symptome, Preise, Impfung …), merkt sich
+Tiernamen und tippt mit „…"-Animation. Optional antwortet eine **echte KI**:
+Ollama auf dem Server installieren, im **Studio → KI** ein Modell laden
+(z. B. `gemma2:2b`), in der App unter Admin „Echte KI-Antworten" einschalten.
+Nicht erreichbar? Der eingebaute Bot übernimmt automatisch.
+
+Dazu gibt es einen **KI-Agenten** (🤖-Button in der Demo-App): Aufgabe eingeben
+(z. B. „Simuliere einen Tag als Praxis"), der Agent navigiert sichtbar durch
+die App und liefert am Ende einen Bericht.
 
 ### Chat-System (Web + Mobile)
 
@@ -66,10 +82,20 @@ Eigenständiges Praxis-Popup (Status/Termine/Nachrichten), kein Build nötig.
 `chrome://extensions` → Entwicklermodus → „Entpackte Erweiterung laden" →
 Ordner `extension/` wählen. Details: [extension/README.md](extension/README.md).
 
-## VetNow Studio — Control-Panel (`studio/`)
+## VetNow Studio 2.0 — Control-Panel (`studio/`)
 
 Ein Docker-Container mit Oberfläche, um alles zu **bauen, previewen, starten und
-zu gruppieren** — dauerhaft auf ZimaOS, Laptop kann aus sein.
+zu gruppieren** — dauerhaft auf ZimaOS, Laptop kann aus sein. Funktioniert für
+**beliebige Projekte** (eigene Apps per Git-Repo-URL hinzufügen), nicht nur VetNow.
+
+**Studio-Funktionen:** klickbare Projekt-Gruppen · durchsuchbare Einstellungen
+(findet auch die *Funktion*, nicht nur den Namen) · **KI-Tab** mit
+Ollama-Modell-Shop (Download mit Fortschritt, Standard-Modell, Test-Chat) ·
+**System-Tab** mit 1-Klick-Update · Hell/Dunkel-Theme + Akzentfarbe.
+
+**Auto-Update:** Bei jedem Container-(Neu-)Start zieht das Studio automatisch
+den neuesten Code von GitHub — App in ZimaOS neu starten = Update. Alternativ
+im Studio: System → „Update installieren & neu starten".
 
 `docker-compose.yml` im Repo-Root startet Studio über ein **fertiges Image**
 (`ghcr.io/bastild/vetnow-studio`), das bei jedem Start selbst das neueste
