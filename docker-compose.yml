@@ -26,6 +26,8 @@ services:
       - "3000:3000"     # Studio-Oberfläche + Web-Vorschauen
       - "8081:8081"     # Expo/Metro — iPhone-App (sauber)
       - "8082:8082"     # Expo/Metro — iPhone-App (Demo + Bot)
+      - "8083:8083"     # Expo/Metro — Avocado at Law (bei Konflikt anderen Port wählen,
+                        #   dann AUCH in Studio → Avocado-iPhone-App → Port anpassen; innen=außen!)
     volumes:
       - /DATA/AppData/vetnow-studio/repo:/repo
       - /DATA/AppData/vetnow-studio/data:/data

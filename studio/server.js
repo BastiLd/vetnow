@@ -223,9 +223,20 @@ app.post('/api/apps/:id/action', (req, res) => {
   }
   if (action === 'start' && a.kind === 'expo') {
     const cwd = path.join(root, a.expoDir || '.');
+    const envx = { REACT_NATIVE_PACKAGER_HOSTNAME: ip, CI: '1', EXPO_NO_TELEMETRY: '1', ...(a.env || {}) };
+    const port = a.expoPort || 8081;
+    // Fehlen die node_modules (z. B. neue App nach Repo-Update), erst installieren
+    if (!fs.existsSync(path.join(cwd, 'node_modules'))) {
+      const sh = process.platform === 'win32' ? 'cmd' : 'bash';
+      const flag = process.platform === 'win32' ? '/c' : '-c';
+      return res.json(proc.startLongRunning(a.id, {
+        cmd: sh, args: [flag, `npm install --no-audit --no-fund && npx expo start --port ${port}`],
+        cwd, kind: 'expo', port, env: envx,
+      }));
+    }
     return res.json(proc.startLongRunning(a.id, {
-      cmd: 'npx', args: ['expo', 'start', '--port', String(a.expoPort || 8081)], cwd, kind: 'expo', port: a.expoPort || 8081,
-      env: { REACT_NATIVE_PACKAGER_HOSTNAME: ip, CI: '1', EXPO_NO_TELEMETRY: '1', ...(a.env || {}) },
+      cmd: 'npx', args: ['expo', 'start', '--port', String(port)], cwd, kind: 'expo', port,
+      env: envx,
     }));
   }
   if (action === 'stop') {

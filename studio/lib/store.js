@@ -41,8 +41,41 @@ function ensure() {
 
 function read() {
   ensure();
-  try { return JSON.parse(fs.readFileSync(FILE, 'utf8')); }
-  catch { return JSON.parse(fs.readFileSync(DEFAULT, 'utf8')); }
+  let data;
+  try { data = JSON.parse(fs.readFileSync(FILE, 'utf8')); }
+  catch { data = JSON.parse(fs.readFileSync(DEFAULT, 'utf8')); }
+  return mergeNewDefaults(data);
+}
+
+/* Neue Standard-Gruppen/-Apps (z. B. nach einem Repo-Update) einmalig in eine
+   bestehende apps.json übernehmen. Bereits gesehene Default-IDs werden in
+   seededIds gemerkt, damit vom Nutzer gelöschte Apps nicht wieder auftauchen. */
+function mergeNewDefaults(data) {
+  try {
+    const def = JSON.parse(fs.readFileSync(DEFAULT, 'utf8'));
+    data.groups = data.groups || []; data.apps = data.apps || [];
+    const seeded = new Set(data.seededIds || data.apps.map((a) => a.id));
+    let changed = !Array.isArray(data.seededIds);
+    (def.groups || []).forEach((g) => {
+      if (!data.groups.some((x) => x.id === g.id)) {
+        // vor "andere" einsortieren, sonst ans Ende
+        const i = data.groups.findIndex((x) => x.id === 'andere');
+        if (i >= 0) data.groups.splice(i, 0, g); else data.groups.push(g);
+        changed = true;
+      }
+    });
+    (def.apps || []).forEach((a) => {
+      if (!seeded.has(a.id) && !data.apps.some((x) => x.id === a.id)) {
+        data.apps.push(a); changed = true;
+      }
+      seeded.add(a.id);
+    });
+    const seededArr = Array.from(seeded);
+    if (JSON.stringify(seededArr) !== JSON.stringify(data.seededIds || [])) changed = true;
+    data.seededIds = seededArr;
+    if (changed) write(data);
+  } catch { /* Defaults kaputt/fehlend — bestehende Daten unverändert lassen */ }
+  return data;
 }
 
 function write(data) {

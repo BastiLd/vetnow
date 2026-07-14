@@ -1,0 +1,17 @@
+{
+  "expo": {
+    "name": "Avocado at Law",
+    "slug": "avocado-at-law",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#1f2421",
+    "primaryColor": "#58CC02",
+    "ios": {
+      "supportsTablet": false
+    },
+    "android": {
+      "softwareKeyboardLayoutMode": "resize"
+    }
+  }
+}

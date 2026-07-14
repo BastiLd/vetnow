@@ -1,0 +1,158 @@
+/* Avocado at Law — base styles & animations */
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: #1f2421;
+  font-family: var(--font-body, "Nunito", system-ui, sans-serif);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+button { font-family: inherit; cursor: pointer; border: none; background: none; }
+input { font-family: inherit; }
+
+/* ---- App screen scaffold ---- */
+.scr {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+}
+.scr-scroll {
+  flex: 1; overflow-y: auto; overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+.scr-scroll::-webkit-scrollbar { width: 0; height: 0; }
+.safe-top { height: 58px; flex-shrink: 0; }
+.safe-bot { height: 22px; flex-shrink: 0; }
+
+/* ---- 3D chunky button (Duolingo signature) ---- */
+.btn3d {
+  position: relative; display: inline-flex; align-items: center; justify-content: center;
+  gap: 10px; width: 100%;
+  font-family: var(--font-display); font-weight: 800;
+  letter-spacing: 0.6px; text-transform: uppercase;
+  font-size: 17px; color: var(--btn-ink);
+  background: var(--btn-bg);
+  border-radius: var(--r-btn);
+  padding: 15px 20px 15px;
+  box-shadow: 0 var(--btn-depth) 0 var(--btn-shadow);
+  transition: transform .04s ease, box-shadow .04s ease, background .15s ease, opacity .15s;
+  user-select: none; -webkit-user-select: none;
+}
+.btn3d:active { transform: translateY(var(--btn-depth)); box-shadow: 0 0 0 var(--btn-shadow); }
+.btn3d:disabled, .btn3d.is-disabled {
+  background: var(--locked); color: var(--locked-ink);
+  box-shadow: 0 var(--btn-depth) 0 var(--locked-shadow); cursor: default;
+}
+.btn3d.is-disabled:active { transform: none; box-shadow: 0 var(--btn-depth) 0 var(--locked-shadow); }
+.btn3d.ghost {
+  background: var(--surface); color: var(--primary);
+  border: 2px solid var(--border);
+  box-shadow: 0 var(--btn-depth) 0 var(--border);
+}
+.btn3d.danger { background: var(--wrong); --btn-shadow: var(--wrong-shadow); color: #fff; }
+.btn3d.blue { background: var(--blue); --btn-shadow: var(--blue-shadow); color: #fff; }
+
+/* ---- Pills / chips ---- */
+.pill {
+  display: inline-flex; align-items: center; gap: 7px; white-space: nowrap;
+  font-family: var(--font-display); font-weight: 800;
+  border-radius: 999px; padding: 7px 14px; font-size: 15px;
+}
+
+/* ---- Option cards (lesson answers) ---- */
+.opt {
+  display: flex; align-items: center; gap: 14px;
+  width: 100%; text-align: left;
+  background: var(--surface); color: var(--text);
+  border: 2px solid var(--border);
+  border-bottom-width: 4px;
+  border-radius: var(--r-card);
+  padding: 16px 18px; font-size: 17px; font-weight: 700;
+  font-family: var(--font-body);
+  transition: background .12s, border-color .12s, transform .04s;
+}
+.opt:active { transform: translateY(1px); }
+.opt.sel { border-color: var(--blue); background: var(--blue-tint); color: var(--blue-ink); }
+.opt.ok  { border-color: var(--correct); background: var(--correct-tint); color: var(--correct-ink); }
+.opt.no  { border-color: var(--wrong); background: var(--wrong-tint); color: var(--wrong-ink); }
+.opt.dim { opacity: .5; }
+
+/* tappable token (word bank) */
+.tok {
+  display: inline-flex; align-items: center;
+  background: var(--surface); color: var(--text);
+  border: 2px solid var(--border); border-bottom-width: 4px;
+  border-radius: 14px; padding: 9px 14px; font-size: 16px; font-weight: 700;
+  transition: transform .04s, opacity .12s;
+}
+.tok:active { transform: translateY(1px); }
+.tok.spent { opacity: 0; pointer-events: none; }
+
+/* ---- Path node ---- */
+.node {
+  width: 76px; height: 68px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  position: relative; border: none; flex-shrink: 0;
+  transition: transform .08s;
+}
+.node:active { transform: translateY(3px); }
+.node-top { position: absolute; inset: 0 0 8px 0; border-radius: 50%; }
+.node-base { position: absolute; inset: 8px 0 0 0; border-radius: 50%; }
+
+/* ---- generic card ---- */
+.card {
+  background: var(--surface); border-radius: var(--r-card);
+  border: 2px solid var(--border);
+}
+
+/* ---- animations ---- */
+@keyframes pop { 0%{transform:scale(.7);opacity:0} 60%{transform:scale(1.08)} 100%{transform:scale(1);opacity:1} }
+@keyframes floatY { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-9px)} }
+@keyframes wiggle { 0%,100%{transform:rotate(0)} 25%{transform:rotate(-5deg)} 75%{transform:rotate(5deg)} }
+@keyframes slideUp { from{transform:translateY(28px);opacity:0} to{transform:translateY(0);opacity:1} }
+@keyframes slideInR { from{transform:translateX(40px);opacity:0} to{transform:translateX(0);opacity:1} }
+@keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-9px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-6px)} 80%{transform:translateX(4px)} }
+@keyframes barShine { from{background-position:-200px 0} to{background-position:200px 0} }
+@keyframes ringPulse { 0%{transform:scale(1);opacity:.55} 100%{transform:scale(1.7);opacity:0} }
+@keyframes confettiFall { to { transform: translateY(640px) rotate(720deg); opacity: .3; } }
+@keyframes blink { 0%,90%,100%{transform:scaleY(1)} 95%{transform:scaleY(.1)} }
+@keyframes countUp { from{transform:translateY(8px);opacity:0} to{transform:translateY(0);opacity:1} }
+@keyframes rise { from{transform:translateY(16px)} to{transform:translateY(0)} }
+@keyframes popIn { 0%{transform:scale(.85)} 60%{transform:scale(1.05)} 100%{transform:scale(1)} }
+@keyframes blinkLid { 0%,92%,100%{transform:scaleY(1)} 96%{transform:scaleY(.06)} }
+@keyframes bob { 0%,100%{transform:translateY(0) rotate(0deg)} 30%{transform:translateY(-4px) rotate(-1.4deg)} 70%{transform:translateY(-2px) rotate(1.2deg)} }
+@keyframes hop { 0%,100%{transform:translateY(0) scale(1,1)} 22%{transform:translateY(1px) scale(1.05,.93)} 45%{transform:translateY(-15px) scale(.97,1.05)} 68%{transform:translateY(0) scale(1.04,.95)} 84%{transform:translateY(-5px) scale(1,1)} }
+@keyframes heartLose { 0%{transform:scale(1)} 30%{transform:scale(1.45) rotate(-12deg)} 60%{transform:scale(.78) rotate(8deg)} 100%{transform:scale(1)} }
+@keyframes comboPop { 0%{transform:scale(.3) rotate(-10deg)} 55%{transform:scale(1.16) rotate(3deg)} 100%{transform:scale(1) rotate(0)} }
+@keyframes nodeBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-7px)} }
+@keyframes shineSweep { from{transform:translateX(-120%) skewX(-18deg)} to{transform:translateX(420%) skewX(-18deg)} }
+@keyframes flameFlicker { 0%,100%{transform:scale(1) rotate(-2deg)} 40%{transform:scale(1.1,1.05) rotate(2deg)} 70%{transform:scale(.94,1.07) rotate(-1deg)} }
+@keyframes starBurst { 0%{transform:scale(0) rotate(-30deg);opacity:1} 70%{transform:scale(1.3) rotate(10deg);opacity:1} 100%{transform:scale(1) rotate(0);opacity:1} }
+@keyframes xpFloat { 0%{transform:translateY(0);opacity:0} 15%{opacity:1} 100%{transform:translateY(-54px);opacity:0} }
+@keyframes armWave { 0%,100%{transform:rotate(0)} 30%{transform:rotate(-14deg)} 60%{transform:rotate(10deg)} }
+@keyframes sparkle { 0%,100%{transform:scale(.4);opacity:.2} 50%{transform:scale(1);opacity:1} }
+@keyframes typingDot { 0%,60%,100%{transform:translateY(0);opacity:.4} 30%{transform:translateY(-5px);opacity:1} }
+
+.float { animation: floatY 3.2s ease-in-out infinite; }
+.pop { animation: popIn .42s cubic-bezier(.2,1.4,.4,1); }
+.slide-up { animation: rise .42s cubic-bezier(.2,.9,.3,1); }
+.rise { animation: rise .38s cubic-bezier(.2,.9,.3,1); }
+.shake { animation: shake .42s ease; }
+.hop { animation: hop .9s cubic-bezier(.3,.7,.4,1); }
+.tada { animation: comboPop .5s cubic-bezier(.2,1.4,.4,1); }
+
+/* mascot idle life */
+.avo-idle { animation: bob 3.4s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 92%; }
+.avo-lids { animation: blinkLid 4.2s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 45%; }
+.avo-arm-wave { animation: armWave 1.6s ease-in-out infinite; transform-box: fill-box; transform-origin: 92% 92%; }
+
+/* progress bar shine sweep */
+.bar-shine { position:absolute; top:0; bottom:0; width:34%; background:linear-gradient(90deg,transparent,rgba(255,255,255,.45),transparent); animation: shineSweep 2.4s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .float,.avo-idle,.avo-lids,.avo-arm-wave,.bar-shine,.hop,.tada,.pop,.slide-up,.rise { animation: none !important; }
+}
+
+.dim-when-off { } /* tweak hook */

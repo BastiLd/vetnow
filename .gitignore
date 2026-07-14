@@ -10,6 +10,10 @@ web/dev-dist/
 # Studio-Laufzeit
 studio/data/
 
+# Avocado at Law
+avocado/web/dist/
+avocado/mobile/.expo/
+
 # Expo
 mobile/.expo/
 mobile/.expo-shared/

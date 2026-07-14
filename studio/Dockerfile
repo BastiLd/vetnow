@@ -14,6 +14,6 @@ COPY entrypoint.sh /usr/local/bin/vetnow-entrypoint.sh
 RUN chmod +x /usr/local/bin/vetnow-entrypoint.sh
 
 VOLUME ["/repo", "/data"]
-EXPOSE 3000 8081 8082
+EXPOSE 3000 8081 8082 8083
 
 ENTRYPOINT ["/usr/local/bin/vetnow-entrypoint.sh"]

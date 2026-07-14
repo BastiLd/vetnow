@@ -1,9 +1,34 @@
 {
   "groups": [
     { "id": "vetnow", "name": "VetNow Kärnten", "color": "#0f9b8e", "icon": "🐾", "description": "Notfall-Tierarzt-Finder — Web, iPhone & Extension" },
+    { "id": "avocado", "name": "Avocado at Law", "color": "#58CC02", "icon": "🥑", "description": "Duolingo für Recht — Web & iPhone" },
     { "id": "andere", "name": "Weitere Projekte", "color": "#2e6f9e", "icon": "🗂️", "description": "Eigene Apps hinzufügen (auch aus fremden Git-Repos)" }
   ],
   "apps": [
+    {
+      "id": "avocado-web",
+      "name": "Web-App",
+      "group": "avocado",
+      "color": "#58CC02",
+      "icon": "🥑",
+      "kind": "web",
+      "webDir": "avocado/web",
+      "distDir": "dist",
+      "basePath": "/avocado/",
+      "buildCmd": "mkdir -p dist && cp index.html styles.css *.jsx dist/"
+    },
+    {
+      "id": "avocado-mobile",
+      "name": "iPhone-App (Expo Go)",
+      "group": "avocado",
+      "color": "#2F7D4F",
+      "icon": "📱",
+      "kind": "expo",
+      "expoDir": "avocado/mobile",
+      "expoSdk": "54",
+      "expoPort": 8083,
+      "env": {}
+    },
     {
       "id": "vetnow-web-clean",
       "name": "Web-App (sauber)",

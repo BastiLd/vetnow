@@ -23,5 +23,9 @@ echo "==> Baue Web-App vor (saubere Version, für sofortige Vorschau)"
 echo "==> Installiere Mobile-Abhängigkeiten (für Expo)"
 ( cd "$REPO_ROOT/mobile" && npm ci ) || echo "Mobile-Deps übersprungen (beim ersten Expo-Start nachholbar)"
 
+echo "==> Avocado at Law: Web vorbauen + Expo-Deps installieren"
+( cd "$REPO_ROOT/avocado/web" && mkdir -p dist && cp index.html styles.css *.jsx dist/ ) || echo "Avocado-Web übersprungen"
+( cd "$REPO_ROOT/avocado/mobile" && npm install --no-audit --no-fund ) || echo "Avocado-Mobile-Deps übersprungen (beim ersten Expo-Start nachholbar)"
+
 echo "==> Starte VetNow Studio"
 exec node "$REPO_ROOT/studio/server.js"
