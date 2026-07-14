@@ -43,13 +43,15 @@ export default function App() {
     );
   }
 
+  // Vollbild-View (keine SafeArea): die Web-App regelt Notch/Home-Bar selbst
+  // über env(safe-area-inset-*) — so sieht es wie eine echte App aus.
   return (
-    <SafeAreaView style={styles.fill}>
+    <View style={styles.shell}>
       <StatusBar style="dark" />
       <WebView
         key={tick}
         source={{ uri: url }}
-        style={styles.fill}
+        style={styles.shell}
         onError={() => setFailed(true)}
         onHttpError={() => setFailed(true)}
         startInLoadingState
@@ -63,12 +65,13 @@ export default function App() {
         javaScriptEnabled
         domStorageEnabled
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   fill: { flex: 1, backgroundColor: '#1f2421' },
+  shell: { flex: 1, backgroundColor: '#FFFFFF' },
   center: { alignItems: 'center', justifyContent: 'center', backgroundColor: '#1f2421', padding: 28 },
   emoji: { fontSize: 64, marginBottom: 10 },
   title: { color: '#EAF7CF', fontSize: 26, fontWeight: '800', marginBottom: 10 },

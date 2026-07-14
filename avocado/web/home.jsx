@@ -152,7 +152,8 @@ function Home({ state, lang, acc, pref, goal, onLang, onStreak, onStartLesson, o
         {units.map((unit, ui) => (
           <div key={unit.id}>
             <UnitBanner unit={unit} index={ui} lang={lang} />
-            {(!curUnit || unit.id !== curUnit.id) && <PathCompanion unitId={unit.id} side={ui % 2 === 0 ? 'right' : 'left'} lang={lang} />}
+            {/* Abschnitts-Maskottchen bleibt IMMER da — Avo ersetzt es nicht */}
+            <PathCompanion unitId={unit.id} side={ui % 2 === 0 ? 'right' : 'left'} lang={lang} />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, alignItems: 'center', paddingTop: (curUnit && unit.id === curUnit.id) ? 34 : 6, paddingBottom: 10 }}>
               {unit.lessons.map((l, li) => {
                 const st = lessonState(l);

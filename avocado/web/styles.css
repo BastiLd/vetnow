@@ -26,6 +26,11 @@ input { font-family: inherit; }
 .safe-top { height: 58px; flex-shrink: 0; }
 .safe-bot { height: 22px; flex-shrink: 0; }
 
+/* Echtes Handy (Vollbild ohne gezeichneten iPhone-Rahmen):
+   Ränder folgen der echten Notch/Home-Bar statt fixer Höhen */
+.phone-root .safe-top { height: calc(env(safe-area-inset-top, 0px) + 14px); }
+.phone-root .safe-bot { height: calc(env(safe-area-inset-bottom, 0px) + 6px); }
+
 /* ---- 3D chunky button (Duolingo signature) ---- */
 .btn3d {
   position: relative; display: inline-flex; align-items: center; justify-content: center;

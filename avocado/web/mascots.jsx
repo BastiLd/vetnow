@@ -132,21 +132,21 @@ function AvoAccessory({ kind, layer }) {
   // chest layer — collar + tie, fully visible on the chest
   if (kind === 'tie' || kind === 'gavel') {
     return (
-      <g>
+      <g transform="translate(0,7)">
         {/* crisp symmetric shirt collar */}
         <path d="M110,130 L98,135 L107,147 L110,138 Z" fill="#FFFFFF" />
         <path d="M110,130 L122,135 L113,147 L110,138 Z" fill="#ECECEC" />
-        {/* tidy diamond knot */}
-        <path d="M110,134 l-7,6 7,6 7,-6 z" fill="#B23128" />
-        {/* centered tie blade draping over the pit */}
-        <path d="M103,146 L110,142 L117,146 L114.5,169 L110,177 L105.5,169 Z" fill="#D8453B" />
-        <path d="M106.6,147 L110,144.6 L113.4,147 L111.7,167 L110,173 L108.3,167 Z" fill="#E9594F" opacity=".6" />
+        {/* tidy diamond knot (kleiner, sitzt unter dem Mund) */}
+        <path d="M110,134 l-6,5.5 6,5.5 6,-5.5 z" fill="#B23128" />
+        {/* slim tie blade draping over the pit */}
+        <path d="M104,144 L110,141 L116,144 L113.8,166 L110,173 L106.2,166 Z" fill="#D8453B" />
+        <path d="M107,145 L110,143 L113,145 L111.5,164 L110,169 L108.5,164 Z" fill="#E9594F" opacity=".6" />
       </g>
     );
   }
   if (kind === 'bowtie') {
     return (
-      <g>
+      <g transform="translate(0,5)">
         <path d="M110,130 L91,122 L91,144 Z" fill="#D8453B" />
         <path d="M110,130 L129,122 L129,144 Z" fill="#C53A31" />
         <rect x="104" y="125" width="12" height="11" rx="4" fill="#A8281F" />
@@ -178,6 +178,8 @@ function Avocado({ size = 160, mood = 'happy', accessory = 'tie', glow = false, 
       <g className={idle && mood !== 'sleep' ? 'avo-idle' : undefined}>
         {/* body — symmetric pear (limbless: no arms, no feet) */}
         <path d="M110,26 C82,26 65,50 63,84 C61,112 50,134 50,164 C50,200 78,220 110,220 C142,220 170,200 170,164 C170,134 159,112 157,84 C155,50 138,26 110,26 Z" fill="url(#avoSkin)" />
+        {/* subtle rim for crispness on light backgrounds */}
+        <path d="M110,26 C82,26 65,50 63,84 C61,112 50,134 50,164 C50,200 78,220 110,220 C142,220 170,200 170,164 C170,134 159,112 157,84 C155,50 138,26 110,26 Z" fill="none" stroke={SKIN_LO} strokeWidth="2.5" opacity=".5" />
         {/* skin sheen */}
         <path d="M84,44 C73,58 70,80 69,104" fill="none" stroke={SKIN_HI} strokeWidth="7" strokeLinecap="round" opacity=".55" />
 

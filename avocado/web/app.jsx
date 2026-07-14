@@ -88,6 +88,8 @@ function App() {
   const [profile, setProfile] = React.useState(avoLoad('avo.profile', { name: '', user: 'avocado_rookie' }));
   const [appSet, setAppSet] = React.useState(avoLoad('avo.set', { goal: 20, reminders: true, sound: true }));
   const LESSON_GEM_BONUS = 5;
+  // Echtes Handy / WebView → Vollbild als echte App, ohne gezeichneten iPhone-Rahmen
+  const isPhone = window.innerWidth < 520;
 
   // persist everything
   React.useEffect(() => { avoSave('avo.tweaks', t); }, [t]);
@@ -179,6 +181,15 @@ function App() {
         <div style={{ flex: 1, position: 'relative', minHeight: 0 }}>{inner}</div>
         <BottomNav tab={tab} onTab={setTab} lang={lang} />
         <div className="safe-bot" style={{ background: 'var(--surface)' }} />
+      </div>
+    );
+  }
+
+  if (isPhone) {
+    return (
+      <div ref={el => el && AvoTheme.applyVars(el, theme.vars)} className="phone-root"
+        style={{ position: 'fixed', inset: 0, background: 'var(--bg)', fontFamily: 'var(--font-body)', overflow: 'hidden' }}>
+        {body}
       </div>
     );
   }
