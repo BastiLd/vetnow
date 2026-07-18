@@ -351,11 +351,12 @@ app.post('/api/ai/chat', async (req, res) => {
   const model = (req.body && req.body.model) || s.ollamaModel;
   const messages = (req.body && req.body.messages) || [];
   const options = (req.body && req.body.options) || undefined; // z. B. temperature/num_ctx aus der App
+  const format = (req.body && req.body.format) || undefined;   // 'json' = Ollama antwortet als reines JSON
   if (!model) return res.status(400).json({ error: 'Kein Modell konfiguriert (Studio → KI)' });
   try {
     const r = await ollamaFetch('/api/chat', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model, messages, stream: false, ...(options ? { options } : {}) }),
+      body: JSON.stringify({ model, messages, stream: false, ...(options ? { options } : {}), ...(format ? { format } : {}) }),
     }, (s.aiTimeoutSec || 60) * 1000);
     if (!r.ok) {
       const err = await r.text();

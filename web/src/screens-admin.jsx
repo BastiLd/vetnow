@@ -27,19 +27,17 @@ function AiSection({ settings, setSetting }) {
     <div>
       <div className="section-label" style={{ marginBottom: 10 }}>KI-Antworten (Ollama über VetNow Studio)</div>
       <div className="stack-3">
-        <button className="switch-row" style={{ width: '100%', textAlign: 'left' }}
-          onClick={() => { const ai = settings.botMode !== 'ai'; setSetting('botMode', ai ? 'ai' : 'smart'); toast(ai ? 'Bot nutzt jetzt die KI (Ollama).' : 'Bot nutzt den eingebauten Modus.', 'success'); }}>
+        <div style={{ width: '100%', textAlign: 'left' }}>
           <div style={{ flex: 1 }}>
-            <div className="section-label">Echte KI-Antworten verwenden</div>
+            <div className="section-label">KI-Antworten (immer aktiv)</div>
             <div className="vn-meta" style={{ marginTop: 3 }}>
-              Antworten kommen von einem lokalen Ollama-Modell (über das Studio auf deinem Server).
-              Nicht erreichbar (z.&nbsp;B. auf GitHub Pages)? Dann übernimmt automatisch der eingebaute Bot.
+              Alle Chat-Antworten kommen von einem lokalen Ollama-Modell (über das Studio auf deinem Server).
+              Ist die KI nicht erreichbar, erscheint im Chat eine deutliche ⚠️-Fehlermeldung — es gibt keinen Ersatz-Bot mehr.
             </div>
           </div>
-          <Switch on={settings.botMode === 'ai'} />
-        </button>
+        </div>
 
-        {settings.botMode === 'ai' && (
+        {true && (
           <div className="card card-pad stack-3">
             <div className="field">
               <label>KI-Adresse (leer = automatisch übers Studio)</label>

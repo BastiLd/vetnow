@@ -1,38 +1,38 @@
-# VetNow Studio — Control-Panel als eine Docker-App auf ZimaOS.
+# VetNow Studio für ZimaOS — mit HOST-NETZWERK: keine Port-Zuordnungen nötig!
 #
-# Nutzt ein FERTIGES Image (ghcr.io/bastild/vetnow-studio) statt eines
-# Mehrzeilen-Startbefehls — ZimaOS/CasaOS verstümmelt komplexe Compose-
-# Befehle beim Import (Zeilenumbrüche gehen verloren). Das Image enthält den
-# Start-Code bereits fest (studio/entrypoint.sh) und klont/aktualisiert das
-# Repo bei jedem Start selbst.
+# VORTEIL: Der Container teilt sich das Netzwerk mit dem Server. Du kannst
+# JEDEN Port (Studio, Handy-Apps, neue Apps) direkt im Studio einstellen und
+# ändern — ohne Neuinstallation, ohne Docker-Einstellungen anzufassen.
+# Ist ein Port belegt (wie bei dir 8081-8083): einfach im Studio auf der
+# App-Karte → Einstellungen → Port z. B. 8047 eintragen. Fertig.
 #
-# Danach im Browser:   http://SERVER-IP:3000
+# Ollama läuft bei dir schon als eigene ZimaOS-App (Port 11434) — bleibt so!
 #
-# WICHTIG: Unten HOST_IP auf die LAN-IP deines ZimaOS-Servers setzen
-# (dieselbe wie in der Adressleiste, z. B. 192.168.68.10).
+# NEUINSTALLATION:
+#   1. Alte App "vetnow-studio" in ZimaOS deinstallieren
+#      (Ordner /DATA/AppData/vetnow-studio löschen = ganz frischer Start).
+#   2. Diese Datei als Compose importieren. Es gibt nur EINEN Tab (vetnow-studio),
+#      Netzwerk muss "host" sein, Ports-Liste bleibt LEER — das ist richtig so!
+#   3. VORHER unten dein EXPO_TOKEN wieder eintragen (von expo.dev).
+#   4. Starten. Studio: http://192.168.68.10:3000
+#   5. EINMALIG: Studio → Tab "KI" → "qwen2.5:7b" (⭐) installieren (~4,7 GB).
+#      OHNE dieses Modell kann die KI nicht antworten!
+#   6. Handy-Apps: falls Port-Meldung kommt, im Studio auf der App-Karte den
+#      Port auf einen freien ändern (z. B. 8047 / 8046 / 8045).
 services:
   vetnow-studio:
     image: ghcr.io/bastild/vetnow-studio:latest
     container_name: vetnow-studio
+    network_mode: host                  # <<< alle Ports automatisch offen — im Studio frei wählbar
     environment:
-      HOST_IP: "192.168.68.10"          # <<< LAN-IP deines Servers eintragen!
+      HOST_IP: "192.168.68.10"          # LAN-IP deines Servers
       REPO_URL: "https://github.com/BastiLd/vetnow.git"
       REPO_ROOT: "/repo"
       STUDIO_DATA_DIR: "/data"
       STUDIO_PORT: "3000"
       EXPO_NO_TELEMETRY: "1"
-      OLLAMA_URL: "http://192.168.68.10:11434"   # Ollama auf demselben Server (für den KI-Bot)
-      # APK-Knopf im Studio: kostenloses Token von expo.dev
-      # (Account → Settings → Access Tokens) hier eintragen und die Raute
-      # am Zeilenanfang entfernen. Erst dann kann das Studio Android-APKs
-      # in der EAS-Cloud bauen. Wie das genau geht: ANLEITUNG-AUSSERHALB-WLAN.md
-      # EXPO_TOKEN: "hier-dein-expo-token-einfuegen"
-    ports:
-      - "3000:3000"     # Studio-Oberfläche + Web-Vorschauen
-      - "8081:8081"     # Expo/Metro — iPhone-App (sauber)
-      - "8082:8082"     # Expo/Metro — iPhone-App (Demo + Bot)
-      - "8083:8083"     # Expo/Metro — Avocado at Law (bei Konflikt anderen Port wählen,
-                        #   dann AUCH in Studio → Avocado-iPhone-App → Port anpassen; innen=außen!)
+      OLLAMA_URL: "http://192.168.68.10:11434"   # dein VORHANDENES Ollama (eigene ZimaOS-App)
+      EXPO_TOKEN: "HIER-DEIN-EXPO-TOKEN-EINFUEGEN"   # <<< dein Token von expo.dev wieder einsetzen!
     volumes:
       - /DATA/AppData/vetnow-studio/repo:/repo
       - /DATA/AppData/vetnow-studio/data:/data

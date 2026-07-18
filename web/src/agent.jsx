@@ -29,6 +29,49 @@ function classify(task) {
   return 'day';
 }
 
+/* ---- Aktions-Katalog: alles, was der KI-Planer sichtbar auslösen darf ---- */
+const AGENT_ACTS = {
+  home:         { desc: 'Startseite öffnen', run: () => emit({ action: 'nav', name: 'home' }) },
+  search:       { desc: 'Such-Screen öffnen (öffentliche Praxis-Suche)', run: () => emit({ action: 'nav', name: 'search' }) },
+  results:      { desc: 'Ergebnisliste der Praxis-Suche öffnen', run: () => emit({ action: 'nav', name: 'results' }) },
+  dashboard:    { desc: 'Praxis-Dashboard öffnen', run: () => emit({ action: 'nav', name: 'dashboard' }) },
+  tab_status:   { desc: 'Dashboard-Tab „Status/Ampel“ öffnen', run: () => emit({ action: 'dashTab', tab: 'status' }) },
+  tab_appts:    { desc: 'Dashboard-Tab „Termine“ öffnen', run: () => emit({ action: 'dashTab', tab: 'appts' }) },
+  tab_messages: { desc: 'Dashboard-Tab „Posteingang/Nachrichten“ öffnen', run: () => emit({ action: 'dashTab', tab: 'messages' }) },
+  tab_profile:  { desc: 'Dashboard-Tab „Profil“ öffnen', run: () => emit({ action: 'dashTab', tab: 'profile' }) },
+  filters_emergency: { desc: 'Suchfilter setzen: Hund + Notfall + Bezirk Villach + nur „heute erreichbar“', run: () => emit({ action: 'filters', filters: { animals: ['dog'], situations: ['emergency'], districts: ['Villach'], onlyGreen: true } }) },
+  filters_clear: { desc: 'Alle Suchfilter entfernen', run: () => emit({ action: 'filters', filters: { animals: [], situations: [], districts: [], specialties: [], onlyConfirmed: false, onlyGreen: false, housecall: false, is24h: false } }) },
+  detail_best:  { desc: 'Beste grüne (erreichbare) Praxis im Detail öffnen', run: (facts) => facts.bestGreen && emit({ action: 'nav', name: 'detail', opts: { practiceId: facts.bestGreen.id } }) },
+  detail_grey:  { desc: 'Eine lange nicht bestätigte (graue) Praxis im Detail öffnen', run: (facts) => facts.anyGrey && emit({ action: 'nav', name: 'detail', opts: { practiceId: facts.anyGrey.id } }) },
+  none:         { desc: 'Keine Aktion — nur beobachten/erklären', run: () => {} },
+};
+
+/* KI-Planung: Die KI liest die AUFGABE und wählt selbst die passenden Schritte.
+   Antwort wird per Ollama-JSON-Modus erzwungen und hart validiert. */
+async function planWithAi(task, facts, settings) {
+  const actList = Object.entries(AGENT_ACTS).map(([k, v]) => '- "' + k + '": ' + v.desc).join('\n');
+  const sys = `Du bist der Planungs-Agent der Tierarztpraxis-App "VetNow". Du bekommst eine Aufgabe vom Nutzer und planst 3 bis 8 Schritte, die danach SICHTBAR in der App ausgeführt werden.
+Antworte NUR mit JSON in exakt dieser Form: {"steps":[{"say":"...","act":"..."}]}
+- "say": ein kurzer deutscher Satz (max. 25 Wörter), was du gerade tust und was du dabei siehst — nutze die mitgelieferten Fakten (echte Zahlen!).
+- "act": genau EINER dieser Aktionsnamen:
+${actList}
+Wähle die Schritte PASSEND ZUR AUFGABE — nicht immer dieselben. Der letzte Schritt hat act "home". Alles auf Deutsch.`;
+  const user = 'AUFGABE: ' + task + '\n\nFAKTEN (echte App-Daten): ' + JSON.stringify(facts);
+  const raw = await aiChat({
+    model: settings.aiModel, aiBaseUrl: settings.aiBaseUrl, format: 'json',
+    messages: [{ role: 'system', content: sys }, { role: 'user', content: user }],
+  });
+  let data;
+  try { data = JSON.parse(String(raw).replace(/```json|```/g, '').trim()); }
+  catch { throw new Error('KI-Plan war kein gültiges JSON'); }
+  const steps = (Array.isArray(data.steps) ? data.steps : [])
+    .filter((s) => s && typeof s.say === 'string' && s.say.trim())
+    .slice(0, 10)
+    .map((s) => ({ say: s.say.trim(), act: AGENT_ACTS[s.act] ? () => AGENT_ACTS[s.act].run(facts) : null }));
+  if (steps.length === 0) throw new Error('KI-Plan war leer');
+  return steps;
+}
+
 /* Skript-Bausteine: jede Zeile = { say, act? } — act löst sichtbare Aktion aus. */
 function buildScript(kind, facts) {
   const s = [];
@@ -122,9 +165,19 @@ export function AgentPanel() {
     setLog([]); setReport('');
     const facts = collectFacts();
     const kind = classify(theTask);
-    const script = buildScript(kind, facts);
     const stepMs = SPEEDS[speed] || SPEEDS.normal;
     const addLog = (line) => setLog((l) => [...l, line]);
+
+    // Die KI plant die Schritte PASSEND zur Aufgabe (jede Aufgabe = eigener Plan).
+    let script;
+    try {
+      addLog('🧠 KI liest die Aufgabe und plant die Schritte…');
+      script = await planWithAi(theTask, facts, settings);
+      addLog('✅ Plan steht: ' + script.length + ' Schritte.');
+    } catch (e) {
+      addLog('⚠️ KI NICHT ERREICHBAR (' + (e && e.message ? e.message : 'Fehler') + ') — ich nutze ersatzweise einen festen Beispiel-Ablauf. Für echte KI-Planung: Läuft Ollama? Modell im Studio installiert?');
+      script = buildScript(kind, facts);
+    }
 
     for (const step of script) {
       if (stopRef.current) { addLog('⏹ Abgebrochen.'); setRunning(false); return; }
@@ -134,21 +187,19 @@ export function AgentPanel() {
       await new Promise((r) => setTimeout(r, stepMs));
     }
 
-    // Bericht: KI (falls aktiv & erreichbar), sonst strukturiertes Template
+    // Bericht: immer per KI formulieren; nur bei Ausfall das strukturierte Template
     let rep = buildReport(kind, facts, theTask);
-    if (settings.botMode === 'ai') {
-      try {
-        addLog('🧠 Formuliere Bericht mit KI…');
-        const ai = await aiChat({
-          model: settings.aiModel, aiBaseUrl: settings.aiBaseUrl,
-          messages: [
-            { role: 'system', content: 'Du bist ein Assistenz-Agent einer Tierarztpraxis-App. Formuliere aus den Fakten einen kurzen, gut lesbaren Bericht auf Deutsch (max. 120 Wörter), mit einer konkreten Empfehlung am Ende.' },
-            { role: 'user', content: 'Aufgabe: ' + theTask + '\nFakten:\n' + rep },
-          ],
-        });
-        if (ai) rep = '📋 AGENT-BERICHT (KI)\n\n' + ai;
-      } catch { addLog('ℹ️ KI nicht erreichbar — nutze eingebauten Bericht.'); }
-    }
+    try {
+      addLog('🧠 Formuliere Bericht mit KI…');
+      const ai = await aiChat({
+        model: settings.aiModel, aiBaseUrl: settings.aiBaseUrl,
+        messages: [
+          { role: 'system', content: 'Du bist ein Assistenz-Agent einer Tierarztpraxis-App. Antworte AUSSCHLIESSLICH auf Deutsch. Formuliere aus den Fakten einen kurzen, gut lesbaren Bericht (max. 120 Wörter), der KONKRET auf die Aufgabe eingeht, mit einer konkreten Empfehlung am Ende.' },
+          { role: 'user', content: 'Aufgabe: ' + theTask + '\nFakten:\n' + rep },
+        ],
+      });
+      if (ai) rep = '📋 AGENT-BERICHT (KI)\n\n' + ai;
+    } catch { addLog('⚠️ KI nicht erreichbar — nutze eingebauten Berichts-Text.'); }
     setReport(rep);
     setRunning(false);
   };

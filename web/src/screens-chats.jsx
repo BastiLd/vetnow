@@ -4,7 +4,6 @@
 import React from 'react';
 import { VNIcon, AnimalGlyph, Switch, toast } from './components.jsx';
 import { CHAT_ROLES } from './data.js';
-import { botConversationReply, botGreetingText, botImageReply } from './bot.js';
 import { aiChat, vetSystemPrompt, toAiMessages } from './lib/ai.js';
 import { useChats } from './lib/chats.jsx';
 
@@ -232,44 +231,29 @@ function ChatThread({ chat, onBack, addMessage, labels, settings }) {
     const schedule = (fn, delay) => { const t = setTimeout(() => { if (alive) fn(); }, delay); timersRef.current.push(t); };
     const practiceName = chat.role === 'owner' ? chat.title : 'Tierarztpraxis Drautal';
 
-    // Mehrere Nachrichten hintereinander senden — Tipp-Dauer wächst mit Textlänge.
-    const sendTexts = (texts) => {
-      let delay = 120;
-      texts.forEach((txt) => {
-        const typeDur = settings.botTyping ? Math.min(2400, 650 + txt.length * 16) : 350;
-        if (settings.botTyping) schedule(() => setTyping(true), delay);
-        delay += typeDur;
-        schedule(() => { setTyping(false); addMessage(chat.id, { from: other, text: txt, time: 'jetzt' }); }, delay);
-        delay += 500;
-      });
-    };
-
-    const builtInTexts = () => {
-      if (isGreeting) return [botGreetingText(other, practiceName)];
-      if (last.type === 'image') return [botImageReply(other)];
-      return botConversationReply({ messages: msgs.slice(0, -1), userText: last.text || '', fromRole: other, practiceName }).texts;
-    };
-
+    // NUR KI — der alte Regel-Bot ist entfernt. Wenn Ollama nicht erreichbar
+    // ist, erscheint eine SICHTBARE Fehlermeldung im Chat (kein stilles
+    // Zurückfallen mehr — so ist immer klar, ob wirklich die KI antwortet).
     (async () => {
-      if (settings.botMode === 'ai') {
-        try {
-          if (settings.botTyping) setTyping(true);
-          const sys = { role: 'system', content: vetSystemPrompt(other, practiceName) };
-          const history = isGreeting
-            ? [sys, { role: 'user', content: '(Der Chat wurde gerade geöffnet — begrüße kurz und freundlich.)' }]
-            : [sys, ...toAiMessages(msgs, other, null)];
-          const text = await aiChat({ messages: history, model: settings.aiModel, aiBaseUrl: settings.aiBaseUrl });
-          if (!alive) return;
-          setTyping(false);
-          addMessage(chat.id, { from: other, text, time: 'jetzt' });
-          return;
-        } catch {
-          if (!alive) return;
-          setTyping(false);
-          // KI nicht erreichbar (z. B. GitHub Pages) → eingebauter Bot übernimmt
-        }
+      try {
+        if (settings.botTyping) setTyping(true);
+        const sys = { role: 'system', content: vetSystemPrompt(other, practiceName) };
+        const history = isGreeting
+          ? [sys, { role: 'user', content: '(Der Chat wurde gerade geöffnet — begrüße kurz und freundlich.)' }]
+          : [sys, ...toAiMessages(msgs, other, null)];
+        const text = await aiChat({ messages: history, model: settings.aiModel, aiBaseUrl: settings.aiBaseUrl });
+        if (!alive) return;
+        setTyping(false);
+        addMessage(chat.id, { from: other, text, time: 'jetzt' });
+      } catch (e) {
+        if (!alive) return;
+        setTyping(false);
+        addMessage(chat.id, {
+          from: other,
+          text: '⚠️ KI NICHT ERREICHBAR — keine Antwort möglich. (' + (e && e.message ? e.message : 'Fehler') + ') Prüfe: Läuft Ollama auf dem Server? Ist das Modell installiert (Studio → KI)? Läuft die App über das Studio (Port 3000)?',
+          time: 'jetzt',
+        });
       }
-      sendTexts(builtInTexts());
     })();
 
     return () => { alive = false; setTyping(false); timersRef.current.forEach(clearTimeout); timersRef.current = []; };
