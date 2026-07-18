@@ -1,0 +1,62 @@
+# ==========================================================================
+# VetNow Studio — FERNZUGRIFF-Variante (mit Tailscale)
+# ==========================================================================
+# Diese Datei ist eine ALTERNATIVE zur normalen docker-compose.yml.
+# Sie stellt neben das Studio einen kleinen Tailscale-Container. Damit ist
+# das Studio (inkl. Expo/Metro für Expo Go) von ÜBERALL erreichbar — auch
+# unterwegs mit mobilen Daten, ganz ohne dasselbe WLAN.
+#
+# Gedacht für DICH (iPhone). Deine Freunde bekommen die fertige APK und
+# brauchen Tailscale NICHT.
+#
+# ---- So geht's (einmalig) ------------------------------------------------
+#   1) Kostenloses Konto auf https://tailscale.com anlegen.
+#   2) Auth-Key erzeugen: Admin-Konsole → Settings → Keys →
+#      „Generate auth key" → unten bei TS_AUTHKEY einsetzen.
+#   3) ZimaOS: App Store → „+" → „Install a customized app" → diesen
+#      Compose-Inhalt einfügen → installieren.
+#   4) Tailscale-App auf dem iPhone installieren, mit DEMSELBEN Konto anmelden.
+#   5) In der Tailscale-Admin-Konsole (Machines) die IP dieses Servers
+#      ablesen (beginnt mit 100.…) und unten bei HOST_IP eintragen.
+#      Danach die App in ZimaOS einmal neu starten.
+#   6) Fertig: Studio öffnen unter  http://100.x.y.z:3000 , dort Expo
+#      starten, QR in Expo Go scannen — läuft jetzt von überall.
+# --------------------------------------------------------------------------
+services:
+  tailscale:
+    image: tailscale/tailscale:latest
+    container_name: vetnow-tailscale
+    hostname: vetnow-studio            # ergibt vetnow-studio.<dein-tailnet>.ts.net
+    environment:
+      TS_AUTHKEY: "tskey-auth-HIER-EINSETZEN"   # <<< Auth-Key aus Schritt 2
+      TS_STATE_DIR: "/var/lib/tailscale"
+      TS_USERSPACE: "true"
+      TS_EXTRA_ARGS: "--accept-dns=false"
+    volumes:
+      - /DATA/AppData/vetnow-tailscale/state:/var/lib/tailscale
+    ports:
+      - "3000:3000"     # Studio-Oberfläche + Web-Vorschauen (auch im LAN erreichbar)
+      - "8081:8081"     # Expo/Metro — iPhone-App (sauber)
+      - "8082:8082"     # Expo/Metro — iPhone-App (Demo + Bot)
+      - "8083:8083"     # Expo/Metro — Avocado at Law
+    restart: unless-stopped
+
+  vetnow-studio:
+    image: ghcr.io/bastild/vetnow-studio:latest
+    container_name: vetnow-studio
+    network_mode: service:tailscale    # Studio teilt sich das Tailscale-Netz
+    depends_on:
+      - tailscale
+    environment:
+      HOST_IP: "100.x.y.z"             # <<< Tailscale-IP dieses Servers (Schritt 5)
+      REPO_URL: "https://github.com/BastiLd/vetnow.git"
+      REPO_ROOT: "/repo"
+      STUDIO_DATA_DIR: "/data"
+      STUDIO_PORT: "3000"
+      EXPO_NO_TELEMETRY: "1"
+      OLLAMA_URL: "http://100.x.y.z:11434"
+      # EXPO_TOKEN: "hier-dein-expo-token-einfuegen"   # optional: für den APK-Knopf
+    volumes:
+      - /DATA/AppData/vetnow-studio/repo:/repo
+      - /DATA/AppData/vetnow-studio/data:/data
+    restart: unless-stopped

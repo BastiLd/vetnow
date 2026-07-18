@@ -297,6 +297,10 @@ function renderCard(a) {
     if (st.running) { const stop = el('button', 'btn danger sm', '⏹ Stop'); stop.onclick = () => doAction(a, 'stop', 'Expo gestoppt.'); actions.appendChild(stop); }
     else { const start = el('button', 'btn primary sm', st.busy ? '⏳ läuft…' : '▶ Starten'); start.disabled = !!st.busy; start.onclick = () => doAction(a, 'start', 'Expo-Server startet.', null, maybeLogs); actions.appendChild(start); }
     const qr = el('button', 'btn sm', '🔳 QR'); qr.onclick = () => qrModal(a.name, a.expUrl, 'In Expo Go scannen bzw. „Enter URL manually“.'); actions.appendChild(qr);
+    const apk = el('button', 'btn sm', st.busy ? '⏳ läuft…' : '📦 APK bauen'); apk.disabled = !!st.busy;
+    apk.title = 'Android-APK in der EAS-Cloud bauen — installierbar, läuft überall OHNE WLAN/Server. Einmalige Einrichtung nötig (siehe ANLEITUNG-AUSSERHALB-WLAN.md).';
+    apk.onclick = () => doAction(a, 'build-apk', 'APK-Build in der Cloud gestartet — dauert einige Minuten. Der Installations-Link erscheint am Ende in den Logs.', null, () => logModal(a));
+    actions.appendChild(apk);
     const sdk = el('button', 'btn sm', '⚙️ Expo-Version'); sdk.onclick = () => sdkModal(a); actions.appendChild(sdk);
     const logs = el('button', 'btn sm', '📜'); logs.title = 'Logs'; logs.onclick = () => logModal(a); actions.appendChild(logs);
   } else if (a.kind === 'extension') {

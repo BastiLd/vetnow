@@ -22,6 +22,11 @@ services:
       STUDIO_PORT: "3000"
       EXPO_NO_TELEMETRY: "1"
       OLLAMA_URL: "http://192.168.68.10:11434"   # Ollama auf demselben Server (für den KI-Bot)
+      # APK-Knopf im Studio: kostenloses Token von expo.dev
+      # (Account → Settings → Access Tokens) hier eintragen und die Raute
+      # am Zeilenanfang entfernen. Erst dann kann das Studio Android-APKs
+      # in der EAS-Cloud bauen. Wie das genau geht: ANLEITUNG-AUSSERHALB-WLAN.md
+      # EXPO_TOKEN: "hier-dein-expo-token-einfuegen"
     ports:
       - "3000:3000"     # Studio-Oberfläche + Web-Vorschauen
       - "8081:8081"     # Expo/Metro — iPhone-App (sauber)

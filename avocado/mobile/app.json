@@ -11,6 +11,8 @@
       "supportsTablet": false
     },
     "android": {
+      "package": "at.avocado.law",
+      "versionCode": 1,
       "softwareKeyboardLayoutMode": "resize"
     }
   }

@@ -19,6 +19,9 @@ const IN_DOCKER = process.env.IN_DOCKER === '1' || fs.existsSync('/.dockerenv');
 const STARTED_AT = Date.now();
 
 function hostIp() {
+  // HOST_IP darf eine LAN-IP (z. B. 192.168.68.10), eine Tailscale-IP
+  // (100.x.y.z) oder ein Tailscale-MagicDNS-Name sein. Damit zeigen die
+  // QR-Codes (exp://HOST_IP:PORT) je nach Setup ins LAN oder ins Tailnet.
   if (process.env.HOST_IP) return process.env.HOST_IP;
   if (process.env.REACT_NATIVE_PACKAGER_HOSTNAME) return process.env.REACT_NATIVE_PACKAGER_HOSTNAME;
   const ifs = os.networkInterfaces();
@@ -250,6 +253,22 @@ app.post('/api/apps/:id/action', (req, res) => {
     reg.apps[idx].expoSdk = sdk; store.write(reg);
     const cwd = path.join(root, a.expoDir || '.');
     return res.json(proc.runOnce(a.id, { task: 'Expo-SDK ' + sdk, shellCmd: `npm install expo@~${sdk}.0.0 && npx expo install --fix`, cwd }));
+  }
+  // Android-APK in der EAS-Cloud bauen — läuft danach ÜBERALL, ohne WLAN/Server.
+  // Voraussetzung (einmalig): EXPO_TOKEN in der docker-compose.yml + eas.json im
+  // Projektordner + einmal `eas build` interaktiv (Keystore). Details: Anleitung.
+  if (action === 'build-apk' && a.kind === 'expo') {
+    const cwd = path.join(root, a.expoDir || '.');
+    if (!fs.existsSync(path.join(cwd, 'eas.json'))) {
+      return res.status(400).json({ error: 'eas.json fehlt in „' + (a.expoDir || '.') + '". Bitte einmalig die APK-Ersteinrichtung machen (siehe ANLEITUNG-AUSSERHALB-WLAN.md).' });
+    }
+    if (!process.env.EXPO_TOKEN) {
+      return res.status(400).json({ error: 'EXPO_TOKEN fehlt. In der docker-compose.yml unter „environment“ eintragen (kostenloses Token von expo.dev → Account → Access Tokens), dann Studio neu starten. Details in der Anleitung.' });
+    }
+    const clean = a.env && String(a.env.EXPO_PUBLIC_VN_CLEAN) === 'true';
+    const profile = String(req.body.profile || (clean ? 'preview-clean' : 'preview')).replace(/[^a-z0-9-]/gi, '');
+    const cmd = `npx --yes eas-cli@latest build --platform android --profile ${profile} --non-interactive`;
+    return res.json(proc.runOnce(a.id, { task: 'APK bauen (' + profile + ')', shellCmd: cmd, cwd, env: { EXPO_NO_TELEMETRY: '1' } }));
   }
   return res.status(400).json({ error: 'Unbekannte Aktion für diese App' });
 });

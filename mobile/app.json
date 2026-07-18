@@ -12,6 +12,8 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "at.vetnow.kaernten",
+      "versionCode": 1,
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#0c7d72",
@@ -20,6 +22,12 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "a24f0f8b-5c86-4cc3-b10a-42785275b6c9"
+      }
+    },
+    "owner": "lightningbasti"
   }
 }
