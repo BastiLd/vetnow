@@ -226,7 +226,11 @@ app.post('/api/apps/:id/action', (req, res) => {
   }
   if (action === 'start' && a.kind === 'expo') {
     const cwd = path.join(root, a.expoDir || '.');
-    const envx = { REACT_NATIVE_PACKAGER_HOSTNAME: ip, CI: '1', EXPO_NO_TELEMETRY: '1', ...(a.env || {}) };
+    const envx = {
+      REACT_NATIVE_PACKAGER_HOSTNAME: ip, CI: '1', EXPO_NO_TELEMETRY: '1',
+      EXPO_PUBLIC_AI_URL: `http://${ip}:3000/api/ai`, // KI-Proxy fürs Handy (Expo Go)
+      ...(a.env || {}),
+    };
     const port = a.expoPort || 8081;
     // Fehlen die node_modules (z. B. neue App nach Repo-Update), erst installieren
     if (!fs.existsSync(path.join(cwd, 'node_modules'))) {
@@ -346,11 +350,12 @@ app.post('/api/ai/chat', async (req, res) => {
   const s = store.readSettings();
   const model = (req.body && req.body.model) || s.ollamaModel;
   const messages = (req.body && req.body.messages) || [];
+  const options = (req.body && req.body.options) || undefined; // z. B. temperature/num_ctx aus der App
   if (!model) return res.status(400).json({ error: 'Kein Modell konfiguriert (Studio → KI)' });
   try {
     const r = await ollamaFetch('/api/chat', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model, messages, stream: false }),
+      body: JSON.stringify({ model, messages, stream: false, ...(options ? { options } : {}) }),
     }, (s.aiTimeoutSec || 60) * 1000);
     if (!r.ok) {
       const err = await r.text();

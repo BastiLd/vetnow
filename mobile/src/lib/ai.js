@@ -1,14 +1,32 @@
-/* VetNow — KI-Anbindung (Ollama über VetNow Studio).
-   Läuft die App über das Studio (http://SERVER:3000/vetnow.../), ist der
-   Studio-Proxy same-origin unter /api/ai erreichbar und leitet an Ollama
-   weiter. Auf GitHub Pages ist kein Server da — dann greift automatisch
-   der eingebaute Bot (bot.js) als Fallback. */
+/* VetNow Mobile — KI-Anbindung (Ollama über VetNow Studio).
+   Gleiches Prinzip wie web/src/lib/ai.js: Die App redet mit dem Studio-Proxy
+   (/api/ai), der an Ollama weiterleitet. Die Proxy-Adresse wird automatisch
+   ermittelt:
+     1. settings.aiBaseUrl (in der App einstellbar)
+     2. EXPO_PUBLIC_AI_URL (Build-Zeit — fürs APK in eas.json setzen)
+     3. Metro-Host (Expo Go im WLAN/Tailscale): http://<Server>:3000/api/ai
+   Ist nichts erreichbar, übernimmt der eingebaute Bot (bot.js) als Fallback. */
+import { NativeModules } from 'react-native';
 
 const DEFAULT_TIMEOUT = 45000;
 
-function base(aiBaseUrl) {
+/* Host des Metro-Bundlers (= der Studio-Server) aus der Bundle-URL ziehen.
+   Funktioniert in Expo Go / Dev-Builds; im Release-APK ist die URL file:// */
+function metroHost() {
+  try {
+    const url = NativeModules.SourceCode && NativeModules.SourceCode.scriptURL;
+    const m = String(url || '').match(/^https?:\/\/([^:/]+)/);
+    return m ? m[1] : '';
+  } catch { return ''; }
+}
+
+export function aiBase(aiBaseUrl) {
   const b = (aiBaseUrl || '').trim().replace(/\/+$/, '');
-  return b || '/api/ai';
+  if (b) return b;
+  const env = (process.env.EXPO_PUBLIC_AI_URL || '').trim().replace(/\/+$/, '');
+  if (env) return env;
+  const host = metroHost();
+  return host ? `http://${host}:3000/api/ai` : '';
 }
 
 async function fetchJson(url, opts = {}, timeout = DEFAULT_TIMEOUT) {
@@ -23,32 +41,14 @@ async function fetchJson(url, opts = {}, timeout = DEFAULT_TIMEOUT) {
   }
 }
 
-/* Ist der KI-Proxy erreichbar und Ollama verbunden? */
-export async function aiStatus(aiBaseUrl) {
-  try {
-    return await fetchJson(base(aiBaseUrl) + '/status', {}, 5000);
-  } catch {
-    return { ok: false };
-  }
-}
-
-/* Installierte Modelle abfragen */
-export async function aiModels(aiBaseUrl) {
-  try {
-    const d = await fetchJson(base(aiBaseUrl) + '/models', {}, 8000);
-    return d.models || [];
-  } catch {
-    return [];
-  }
-}
-
-/* Feineinstellungen für konsistente, deutschsprachige Antworten:
-   niedrige Temperatur = weniger Ausreißer/Sprachwechsel, genug Kontext für Verlauf. */
+/* Feineinstellungen für konsistente, deutschsprachige Antworten. */
 export const AI_OPTIONS = { temperature: 0.4, top_p: 0.9, num_ctx: 4096, repeat_penalty: 1.15 };
 
 /* Chat-Antwort holen. messages: [{role:'user'|'assistant'|'system', content}] */
 export async function aiChat({ messages, model, aiBaseUrl }) {
-  const d = await fetchJson(base(aiBaseUrl) + '/chat', {
+  const base = aiBase(aiBaseUrl);
+  if (!base) throw new Error('keine KI-URL');
+  const d = await fetchJson(base + '/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ model, messages, options: AI_OPTIONS }),
@@ -78,15 +78,15 @@ SICHERHEIT:
 - NOTFALL-Anzeichen (Vergiftung z. B. Schokolade/Xylit/Rattengift, Atemnot, starke Blutung, Krämpfe, Kollaps, aufgeblähter harter Bauch, Hitzschlag): Rate SOFORT zum Anruf in der Praxis bzw. zum Tiernotdienst und komme erst danach auf Details zurück.
 - Stelle KEINE Ferndiagnosen und nenne NIEMALS Medikamente oder Dosierungen. Sage bei Unsicherheit, dass eine Untersuchung vor Ort nötig ist.
 
-TERMINE: Biete bei Terminwünschen konkret zwei Zeiten an (z. B. „morgen 09:30 oder 14:00 Uhr“). Bestätigt jemand eine Zeit, fasse kurz zusammen und wünsche etwas Nettes.
+TERMINE: Biete bei Terminwünschen konkret zwei Zeiten an (z. B. „morgen 09:30 oder 14:00 Uhr"). Bestätigt jemand eine Zeit, fasse kurz zusammen und wünsche etwas Nettes.
 
 BEISPIELE (so sollst du klingen):
-Halter: „Mein Hund Balu humpelt seit gestern.“
-Du: „Das tut mir leid — gute Besserung an Balu! Damit wir die Ursache sicher finden, sollten wir ihn kurz ansehen. Passt Ihnen morgen 09:30 oder 14:00 Uhr?“
-Halter: „Was kostet die Impfung?“
-Du: „Die Grundimmunisierung liegt bei uns je nach Impfstoff meist zwischen 45 und 70 Euro. Sagen Sie mir gern, um welches Tier es geht, dann nenne ich Ihnen den genauen Preis.“
-Halter: „Meine Katze hat Schokolade gefressen!“
-Du: „Das kann ein Notfall sein — rufen Sie uns bitte SOFORT an, damit wir die Menge einschätzen können. Kommen Sie im Zweifel direkt vorbei, warten Sie nicht ab.“`;
+Halter: „Mein Hund Balu humpelt seit gestern."
+Du: „Das tut mir leid — gute Besserung an Balu! Damit wir die Ursache sicher finden, sollten wir ihn kurz ansehen. Passt Ihnen morgen 09:30 oder 14:00 Uhr?"
+Halter: „Was kostet die Impfung?"
+Du: „Die Grundimmunisierung liegt bei uns je nach Impfstoff meist zwischen 45 und 70 Euro. Sagen Sie mir gern, um welches Tier es geht, dann nenne ich Ihnen den genauen Preis."
+Halter: „Meine Katze hat Schokolade gefressen!"
+Du: „Das kann ein Notfall sein — rufen Sie uns bitte SOFORT an, damit wir die Menge einschätzen können. Kommen Sie im Zweifel direkt vorbei, warten Sie nicht ab."`;
 }
 
 /* Chat-Verlauf (App-Format) in KI-Format übersetzen (letzte N Nachrichten) */

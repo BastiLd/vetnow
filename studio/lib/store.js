@@ -24,7 +24,7 @@ const SETTINGS_DEFAULT = {
   confirmDelete: true,        // Löschen bestätigen
   // KI / Ollama
   ollamaUrl: '',              // leer = OLLAMA_URL-Env bzw. http://HOST_IP:11434
-  ollamaModel: 'gemma2:2b',   // Standard-Modell für /api/ai/chat
+  ollamaModel: 'qwen2.5:7b',  // Standard-Modell für /api/ai/chat — schnell, schlau, sehr gutes Deutsch
   aiTimeoutSec: 60,           // Timeout für KI-Antworten
   // Updates
   updateCheckMin: 60,         // Minuten zwischen Update-Checks (0 = aus)

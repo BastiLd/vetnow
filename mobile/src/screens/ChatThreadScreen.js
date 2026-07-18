@@ -11,6 +11,7 @@ import { Meta, StarRating, toast } from '../components';
 import { VNIcon } from '../icons';
 import { Glyph } from './ChatsScreen';
 import { botConversationReply, botGreetingText, botImageReply } from '../bot';
+import { aiChat, vetSystemPrompt, toAiMessages } from '../lib/ai';
 import { useChats } from '../lib/ChatContext';
 
 /* Animierte 3-Punkte-Tippanzeige */
@@ -67,25 +68,52 @@ export default function ChatThreadScreen({ route, navigation }) {
     if (!isGreeting && !isReply) return;
     handledRef.current = sig;
 
-    const schedule = (fn, delay) => { const t = setTimeout(fn, delay); timersRef.current.push(t); };
+    let alive = true;
+    const schedule = (fn, delay) => { const t = setTimeout(() => { if (alive) fn(); }, delay); timersRef.current.push(t); };
     const practiceName = chat.role === 'owner' ? chat.title : 'Tierarztpraxis Drautal';
 
-    let texts;
-    if (isGreeting) texts = [botGreetingText(other, practiceName)];
-    else if (lastM.type === 'image') texts = [botImageReply(other)];
-    else texts = botConversationReply({ messages: arr.slice(0, -1), userText: lastM.text || '', fromRole: other, practiceName }).texts;
-
     // Mehrere Nachrichten nacheinander — Tipp-Dauer wächst mit Textlänge.
-    let delay = 120;
-    texts.forEach((txt) => {
-      const typeDur = settings.botTyping ? Math.min(2400, 650 + txt.length * 16) : 350;
-      if (settings.botTyping) schedule(() => setTyping(true), delay);
-      delay += typeDur;
-      schedule(() => { setTyping(false); addMessage(chat.id, { from: other, text: txt, time: 'jetzt' }); }, delay);
-      delay += 500;
-    });
+    const sendTexts = (texts) => {
+      let delay = 120;
+      texts.forEach((txt) => {
+        const typeDur = settings.botTyping ? Math.min(2400, 650 + txt.length * 16) : 350;
+        if (settings.botTyping) schedule(() => setTyping(true), delay);
+        delay += typeDur;
+        schedule(() => { setTyping(false); addMessage(chat.id, { from: other, text: txt, time: 'jetzt' }); }, delay);
+        delay += 500;
+      });
+    };
 
-    return () => { setTyping(false); timersRef.current.forEach(clearTimeout); timersRef.current = []; };
+    const builtInTexts = () => {
+      if (isGreeting) return [botGreetingText(other, practiceName)];
+      if (lastM.type === 'image') return [botImageReply(other)];
+      return botConversationReply({ messages: arr.slice(0, -1), userText: lastM.text || '', fromRole: other, practiceName }).texts;
+    };
+
+    (async () => {
+      // KI zuerst (Standard): Ollama über den Studio-Proxy — antwortet auf Deutsch.
+      if (settings.botMode === 'ai') {
+        try {
+          if (settings.botTyping) setTyping(true);
+          const sys = { role: 'system', content: vetSystemPrompt(other, practiceName) };
+          const history = isGreeting
+            ? [sys, { role: 'user', content: '(Der Chat wurde gerade geöffnet — begrüße kurz und freundlich.)' }]
+            : [sys, ...toAiMessages(arr, other, null)];
+          const text = await aiChat({ messages: history, model: settings.aiModel, aiBaseUrl: settings.aiBaseUrl });
+          if (!alive) return;
+          setTyping(false);
+          addMessage(chat.id, { from: other, text, time: 'jetzt' });
+          return;
+        } catch {
+          if (!alive) return;
+          setTyping(false);
+          // KI nicht erreichbar (z. B. APK ohne Server) → eingebauter Bot übernimmt
+        }
+      }
+      sendTexts(builtInTexts());
+    })();
+
+    return () => { alive = false; setTyping(false); timersRef.current.forEach(clearTimeout); timersRef.current = []; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [msgLen, chatId, settings && settings.botEnabled]);
 

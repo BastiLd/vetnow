@@ -11,12 +11,13 @@
     },
     "preview": {
       "distribution": "internal",
-      "android": { "buildType": "apk" }
+      "android": { "buildType": "apk" },
+      "env": { "EXPO_PUBLIC_AI_URL": "http://192.168.68.10:3000/api/ai" }
     },
     "preview-clean": {
       "distribution": "internal",
       "android": { "buildType": "apk" },
-      "env": { "EXPO_PUBLIC_VN_CLEAN": "true" }
+      "env": { "EXPO_PUBLIC_VN_CLEAN": "true", "EXPO_PUBLIC_AI_URL": "http://192.168.68.10:3000/api/ai" }
     },
     "production": {
       "autoIncrement": true,

@@ -41,7 +41,7 @@ const SETTINGS_REGISTRY = [
   { key: 'ollamaUrl', cat: 'KI', type: 'text', placeholder: 'leer = automatisch (HOST_IP:11434)',
     title: 'Ollama-Adresse', desc: 'Wo dein Ollama läuft. Leer lassen = automatisch die Server-IP mit Standard-Port 11434.',
     keywords: 'ollama url adresse server ki modell verbindung port 11434 host endpoint' },
-  { key: 'ollamaModel', cat: 'KI', type: 'text', placeholder: 'z. B. gemma2:2b',
+  { key: 'ollamaModel', cat: 'KI', type: 'text', placeholder: 'z. B. qwen2.5:7b',
     title: 'Standard-KI-Modell', desc: 'Dieses Modell antwortet, wenn die App keinen eigenen Modellnamen mitschickt. Im KI-Tab installieren & wechseln.',
     keywords: 'modell standard default gemma llama qwen bot antworten chat ki auswahl' },
   { key: 'aiTimeoutSec', cat: 'KI', type: 'number', min: 10, max: 600,
@@ -70,7 +70,8 @@ const SETTINGS_REGISTRY = [
 
 // Kuratierter Modell-Katalog für den KI-„Shop“
 const MODEL_CATALOG = [
-  { name: 'gemma2:2b', size: '1,6 GB', desc: 'Google Gemma 2 — klein, flott, gutes Deutsch. Unsere Empfehlung für den Chat-Bot.', star: true },
+  { name: 'qwen2.5:7b', size: '4,7 GB', desc: 'Qwen 2.5 7B — schnell, schlau, SEHR gutes Deutsch. Unsere Empfehlung für den Chat-Bot (Standard). Braucht ~8 GB RAM.', star: true },
+  { name: 'gemma2:2b', size: '1,6 GB', desc: 'Google Gemma 2 — klein, flott, gutes Deutsch. Für schwache Server.' },
   { name: 'llama3.2:1b', size: '1,3 GB', desc: 'Meta Llama 3.2 — sehr schnell, für schwache Hardware.' },
   { name: 'llama3.2:3b', size: '2,0 GB', desc: 'Meta Llama 3.2 — guter Allrounder mit mehr Verständnis.' },
   { name: 'qwen2.5:1.5b', size: '1,0 GB', desc: 'Qwen 2.5 — winzig und erstaunlich fähig.' },

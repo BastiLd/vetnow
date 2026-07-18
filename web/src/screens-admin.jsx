@@ -53,7 +53,7 @@ function AiSection({ settings, setSetting }) {
                   {models.map((m) => <option key={m.name} value={m.name}>{m.name}</option>)}
                 </select>
               ) : (
-                <input className="input" value={settings.aiModel} onChange={(e) => setSetting('aiModel', e.target.value)} placeholder="z. B. gemma2:2b (leer = Studio-Standard)" />
+                <input className="input" value={settings.aiModel} onChange={(e) => setSetting('aiModel', e.target.value)} placeholder="z. B. qwen2.5:7b (leer = Studio-Standard)" />
               )}
             </div>
             <button className="btn btn-secondary btn-block" onClick={check} disabled={checking}>

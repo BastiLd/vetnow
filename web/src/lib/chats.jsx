@@ -8,7 +8,7 @@ import { IS_CLEAN } from './config.js';
 
 const K_CHATS = 'vn_chats_v1';
 const K_LABELS = 'vn_labels_v1';
-const K_SETTINGS = 'vn_chat_settings_v1';
+const K_SETTINGS = 'vn_chat_settings_v2'; // v2: KI (Ollama) ist Standard-Bot
 
 const load = (key, fallback) => {
   try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch { return fallback; }
@@ -19,7 +19,14 @@ const uid = (p) => p + Math.random().toString(36).slice(2, 9) + (Date.now ? Date
 const ChatContext = React.createContext(null);
 
 function initSettings() {
-  const s = { ...CHAT_SETTINGS_DEFAULT, ...load(K_SETTINGS, {}) };
+  // Migration v1 → v2: alte Einstellungen übernehmen, aber botMode/aiModel auf
+  // den neuen KI-Standard zurücksetzen (KI antwortet jetzt überall standardmäßig).
+  let stored = load(K_SETTINGS, null);
+  if (!stored) {
+    const old = load('vn_chat_settings_v1', null);
+    if (old) { delete old.botMode; delete old.aiModel; stored = old; }
+  }
+  const s = { ...CHAT_SETTINGS_DEFAULT, ...(stored || {}) };
   if (IS_CLEAN) s.autoSeed = false; // saubere Version: keine vorgefertigten Chats
   return s;
 }

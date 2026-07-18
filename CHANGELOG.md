@@ -239,3 +239,7 @@ Alle Änderungen dieser Ausbaustufe, durchnummeriert. (Web = `web/`, Mobile = `m
 203. Web: `.convo-list` overflow-Fix (Menüs ragen nicht mehr aus der Karte)
 204. Mobile: Bot-Timer werden beim Verlassen des Threads aufgeräumt (keine Geister-Nachrichten)
 205. Datenspiegelung Web ↔ Mobile automatisiert im Commit-Prozess (bot.js + data.js identisch)
+206. KI ist jetzt STANDARD: `botMode: 'ai'` in Web & Mobile — Ollama (qwen2.5:7b) antwortet in allen Chats, der eingebaute Bot 2.0 bleibt als automatischer Fallback (z. B. GitHub Pages / APK ohne Server)
+207. Mobile: eigene KI-Anbindung (`mobile/src/lib/ai.js`) — findet den Studio-Proxy automatisch über den Metro-Host (Expo Go), per `EXPO_PUBLIC_AI_URL` (APK, in eas.json gesetzt) oder per App-Einstellung
+208. KI „trainiert": deutlich besserer System-Prompt (NUR Deutsch, Sie-Form, Notfall-Triage, keine Dosierungen, Beispiel-Dialoge) + Feineinstellungen (temperature 0.4, num_ctx 4096, repeat_penalty 1.15) — Studio-Proxy reicht `options` jetzt an Ollama durch
+209. Studio: Standard-Modell `qwen2.5:7b` (sehr gutes Deutsch), Modell-Katalog & Platzhalter aktualisiert; Chat-Einstellungen auf v2 migriert (KI-Standard greift auch bei bestehenden Installationen)

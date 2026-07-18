@@ -532,8 +532,8 @@ export const CHAT_SETTINGS_DEFAULT = {
   botEnabled: true,      // Auto-Antwort-Bot (Demo)
   botTyping: true,       // Tipp-Animation (3 Punkte), während die Gegenseite "tippt"
   botGreeting: true,     // Begrüßung beim ersten Öffnen eines leeren Chats
-  botMode: 'smart',      // 'smart' = eingebauter Bot 2.0 | 'ai' = Ollama über VetNow Studio
-  aiModel: '',           // Ollama-Modell (z. B. 'gemma2:2b'), leer = Standard des Studios
+  botMode: 'ai',         // 'ai' = Ollama über VetNow Studio (Standard) | 'smart' = eingebauter Bot 2.0 (Fallback)
+  aiModel: '',           // Ollama-Modell, leer = Standard des Studios (qwen2.5:7b)
   aiBaseUrl: '',         // KI-Proxy-URL, leer = same-origin '/api/ai' (Studio)
   agentEnabled: true,    // KI-Agent-Panel (führt sichtbar Aufgaben in der App aus)
 };

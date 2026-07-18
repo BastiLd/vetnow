@@ -8,7 +8,7 @@ import { IS_CLEAN } from './config';
 
 const K_CHATS = 'vn_chats_v1';
 const K_LABELS = 'vn_labels_v1';
-const K_SETTINGS = 'vn_chat_settings_v1';
+const K_SETTINGS = 'vn_chat_settings_v2'; // v2: KI (Ollama) ist Standard-Bot
 const uid = (p) => p + Math.random().toString(36).slice(2, 9) + Date.now().toString(36);
 
 const ChatContext = React.createContext(null);
