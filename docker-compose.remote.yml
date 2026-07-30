@@ -39,6 +39,7 @@ services:
       - "8081:8081"     # Expo/Metro — iPhone-App (sauber)
       - "8082:8082"     # Expo/Metro — iPhone-App (Demo + Bot)
       - "8083:8083"     # Expo/Metro — Avocado at Law
+      - "8044:8044"     # Expo/Metro — GHGFlix Handy-/TV-App
     restart: unless-stopped
 
   vetnow-studio:

@@ -2,6 +2,7 @@
   "groups": [
     { "id": "vetnow", "name": "VetNow Kärnten", "color": "#0f9b8e", "icon": "🐾", "description": "Notfall-Tierarzt-Finder — Web, iPhone & Extension" },
     { "id": "avocado", "name": "Avocado at Law", "color": "#58CC02", "icon": "🥑", "description": "Duolingo für Recht — Web & iPhone" },
+    { "id": "ghgflix", "name": "GHGFlix", "color": "#e50914", "icon": "🎬", "description": "Deine eigene Netflix-Alternative — Handy-App, Fernseher & Server-Oberfläche" },
     { "id": "andere", "name": "Weitere Projekte", "color": "#2e6f9e", "icon": "🗂️", "description": "Eigene Apps hinzufügen (auch aus fremden Git-Repos)" }
   ],
   "apps": [
@@ -85,6 +86,35 @@
       "icon": "🧩",
       "kind": "extension",
       "extensionDir": "extension"
+    },
+
+    {
+      "_kommentar": "GHGFlix liegt in einem EIGENEN Repo — das Studio klont es beim ersten Start automatisch nach /data/ext-repos/ghgflix-mobile.",
+      "id": "ghgflix-mobile",
+      "name": "Handy-/TV-App (Expo Go)",
+      "group": "ghgflix",
+      "color": "#e50914",
+      "icon": "📱",
+      "kind": "expo",
+      "repoUrl": "https://github.com/BastiLd/GHGFLIX.git",
+      "expoDir": "mobile",
+      "expoSdk": "54",
+      "expoPort": 8044,
+      "env": {}
+    },
+    {
+      "_kommentar": "Kleine Karte, die auf den laufenden GHGFlix-Container (Port 8484) verlinkt — inkl. Installationsseite und Fernseh-Modus.",
+      "id": "ghgflix-open",
+      "name": "Server-Oberfläche öffnen",
+      "group": "ghgflix",
+      "color": "#ff2b36",
+      "icon": "🎬",
+      "kind": "web",
+      "repoUrl": "https://github.com/BastiLd/GHGFLIX.git",
+      "webDir": "server/studio-card",
+      "distDir": "dist",
+      "basePath": "/ghgflix/",
+      "buildCmd": "mkdir -p dist && cp index.html dist/"
     }
   ]
 }

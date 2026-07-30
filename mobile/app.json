@@ -14,6 +14,7 @@
     "android": {
       "package": "at.vetnow.kaernten",
       "versionCode": 1,
+      "usesCleartextTraffic": true,
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#0c7d72",

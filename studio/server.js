@@ -232,13 +232,19 @@ app.post('/api/apps/:id/action', (req, res) => {
       ...(a.env || {}),
     };
     const port = a.expoPort || 8081;
-    // Fehlen die node_modules (z. B. neue App nach Repo-Update), erst installieren
-    if (!fs.existsSync(path.join(cwd, 'node_modules'))) {
+    // Apps aus einem FREMDEN Repo (repoUrl) werden hier automatisch geklont bzw.
+    // aktualisiert — sonst müsste man vor jedem Start erst „Klonen“ drücken und
+    // ein Repo-Update käme nie an. Ebenso: fehlende node_modules nachinstallieren.
+    if (a.repoUrl || !fs.existsSync(path.join(cwd, 'node_modules'))) {
       const sh = process.platform === 'win32' ? 'cmd' : 'bash';
       const flag = process.platform === 'win32' ? '/c' : '-c';
+      const pre = ensureExtRepoCmd(a); // endet mit "&& " bzw. ist leer
+      const inDir = a.repoUrl ? `cd "${cwd.replace(/\\/g, '/')}" && ` : '';
       return res.json(proc.startLongRunning(a.id, {
-        cmd: sh, args: [flag, `npm install --no-audit --no-fund && npx expo start --port ${port}`],
-        cwd, kind: 'expo', port, env: envx,
+        cmd: sh,
+        args: [flag, pre + inDir + `npm install --no-audit --no-fund && npx expo start --port ${port}`],
+        cwd: a.repoUrl ? undefined : cwd,
+        kind: 'expo', port, env: envx,
       }));
     }
     return res.json(proc.startLongRunning(a.id, {
