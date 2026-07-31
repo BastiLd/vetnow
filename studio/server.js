@@ -115,13 +115,19 @@ function ensureExtRepoCmd(a) {
   if (!a.repoUrl) return '';
   const dir = extRepoDir(a).replace(/\\/g, '/');
   const br = String(a.repoBranch || '').trim().replace(/[^A-Za-z0-9._\/-]/g, '');
-  if (!br) {
-    return `if [ ! -d "${dir}/.git" ]; then git clone "${a.repoUrl}" "${dir}"; else git -C "${dir}" pull --ff-only || true; fi && `;
-  }
-  return (
-    `if [ ! -d "${dir}/.git" ]; then git clone -b "${br}" "${a.repoUrl}" "${dir}"; ` +
-    `else git -C "${dir}" fetch origin "${br}" && git -C "${dir}" checkout -B "${br}" "origin/${br}"; fi && `
-  );
+  const clone = br ? `git clone -b "${br}" "${a.repoUrl}" "${dir}"` : `git clone "${a.repoUrl}" "${dir}"`;
+  /* Der Ordner ist ein reiner BAU-Klon — hier wird nichts von Hand editiert.
+     Trotzdem entstehen beim Bauen Dateien (package-lock.json) und Werkzeuge
+     wie EAS ändern app.json. Ein einfaches checkout/pull scheitert daran mit
+     "Your local changes would be overwritten". Deshalb hart auf den Server-
+     Stand zurücksetzen und unverfolgte Dateien wegräumen.
+     `git clean -fd` fasst per .gitignore ausgeschlossene Ordner (node_modules)
+     NICHT an — die Installation bleibt also erhalten. */
+  const update = br
+    ? `git -C "${dir}" fetch origin "${br}" && git -C "${dir}" reset --hard "origin/${br}" && ` +
+      `git -C "${dir}" clean -fd && git -C "${dir}" checkout -B "${br}" "origin/${br}"`
+    : `git -C "${dir}" reset --hard && git -C "${dir}" clean -fd && (git -C "${dir}" pull --ff-only || true)`;
+  return `if [ ! -d "${dir}/.git" ]; then ${clone}; else ${update}; fi && `;
 }
 
 // ---------- Status & Einstellungen ----------
