@@ -107,11 +107,21 @@ function enrich(a, ip) {
   return out;
 }
 
-/* Externes Repo einer App klonen/aktualisieren (für "Duolingo für Recht" & Co.) */
+/* Externes Repo einer App klonen/aktualisieren (für "Duolingo für Recht" & Co.)
+   Mit optionalem `repoBranch`: liegt der Code nicht im Standard-Branch, wurde
+   vorher stillschweigend der falsche Stand geklont — der Ordner der App fehlte
+   dann schlicht ("cd .../mobile: No such file or directory"). */
 function ensureExtRepoCmd(a) {
   if (!a.repoUrl) return '';
   const dir = extRepoDir(a).replace(/\\/g, '/');
-  return `if [ ! -d "${dir}/.git" ]; then git clone "${a.repoUrl}" "${dir}"; else git -C "${dir}" pull --ff-only || true; fi && `;
+  const br = String(a.repoBranch || '').trim().replace(/[^A-Za-z0-9._\/-]/g, '');
+  if (!br) {
+    return `if [ ! -d "${dir}/.git" ]; then git clone "${a.repoUrl}" "${dir}"; else git -C "${dir}" pull --ff-only || true; fi && `;
+  }
+  return (
+    `if [ ! -d "${dir}/.git" ]; then git clone -b "${br}" "${a.repoUrl}" "${dir}"; ` +
+    `else git -C "${dir}" fetch origin "${br}" && git -C "${dir}" checkout -B "${br}" "origin/${br}"; fi && `
+  );
 }
 
 // ---------- Status & Einstellungen ----------
@@ -150,6 +160,7 @@ app.post('/api/apps', (req, res) => {
     name: b.name || 'Neue App', group: b.group || (reg.groups[0] && reg.groups[0].id) || 'andere',
     color: b.color || '#0f9b8e', icon: b.icon || '📦', kind: b.kind || 'web',
     repoUrl: (b.repoUrl || '').trim(),
+    repoBranch: (b.repoBranch || '').trim(),
   };
   if (napp.kind === 'web') { napp.webDir = b.webDir || 'web'; napp.distDir = b.distDir || 'dist'; napp.basePath = b.basePath || '/' + napp.id + '/'; napp.buildCmd = b.buildCmd || 'npm ci && npm run build'; }
   if (napp.kind === 'expo') { napp.expoDir = b.expoDir || 'mobile'; napp.expoSdk = b.expoSdk || '54'; napp.expoPort = parseInt(b.expoPort, 10) || 8081; napp.env = b.env || {}; }
@@ -163,7 +174,7 @@ app.put('/api/apps/:id', (req, res) => {
   const reg = store.read();
   const idx = reg.apps.findIndex((a) => a.id === req.params.id);
   if (idx < 0) return res.status(404).json({ error: 'App nicht gefunden' });
-  const allowed = ['name', 'group', 'color', 'icon', 'webDir', 'distDir', 'basePath', 'buildCmd', 'expoDir', 'expoSdk', 'expoPort', 'extensionDir', 'repoUrl', 'env'];
+  const allowed = ['name', 'group', 'color', 'icon', 'webDir', 'distDir', 'basePath', 'buildCmd', 'expoDir', 'expoSdk', 'expoPort', 'extensionDir', 'repoUrl', 'repoBranch', 'env'];
   allowed.forEach((k) => { if (req.body[k] !== undefined) reg.apps[idx][k] = req.body[k]; });
   if (reg.apps[idx].expoPort) reg.apps[idx].expoPort = parseInt(reg.apps[idx].expoPort, 10) || 8081;
   store.write(reg);
@@ -218,8 +229,11 @@ app.post('/api/apps/:id/action', (req, res) => {
     return res.json(proc.runOnce(a.id, { task: 'Bauen', shellCmd: cmd, cwd: a.repoUrl ? undefined : cwd }));
   }
   if (action === 'pull') {
-    const cwd = a.repoUrl ? extRepoDir(a) : REPO_ROOT;
-    return res.json(proc.runOnce(a.id, { task: 'Aktualisieren', shellCmd: 'git pull --ff-only', cwd }));
+    if (a.repoUrl) {
+      // Fremdes Repo: klont beim ersten Mal und beachtet den eingestellten Branch
+      return res.json(proc.runOnce(a.id, { task: 'Aktualisieren', shellCmd: ensureExtRepoCmd(a) + 'echo fertig' }));
+    }
+    return res.json(proc.runOnce(a.id, { task: 'Aktualisieren', shellCmd: 'git pull --ff-only', cwd: REPO_ROOT }));
   }
   if (action === 'clone' && a.repoUrl) {
     return res.json(proc.runOnce(a.id, { task: 'Klonen', shellCmd: ensureExtRepoCmd(a) + 'echo fertig' }));

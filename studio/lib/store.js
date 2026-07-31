@@ -67,6 +67,17 @@ function mergeNewDefaults(data) {
     (def.apps || []).forEach((a) => {
       if (!seeded.has(a.id) && !data.apps.some((x) => x.id === a.id)) {
         data.apps.push(a); changed = true;
+      } else {
+        /* App gibt es schon: NEU hinzugekommene Felder aus den Defaults
+           nachtragen (z. B. repoBranch). Vorhandene Werte bleiben unangetastet,
+           damit im Studio geänderte Ports/Namen erhalten bleiben. Ohne das
+           bekämen bestehende Installationen neue Einstellungen nie zu sehen. */
+        const cur = data.apps.find((x) => x.id === a.id);
+        if (cur) {
+          Object.keys(a).forEach((k) => {
+            if (cur[k] === undefined) { cur[k] = a[k]; changed = true; }
+          });
+        }
       }
       seeded.add(a.id);
     });
