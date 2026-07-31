@@ -219,7 +219,7 @@ app.get('/api/apps/:id/logs', (req, res) => {
 });
 
 // ---------- App-Aktionen ----------
-app.post('/api/apps/:id/action', (req, res) => {
+app.post('/api/apps/:id/action', async (req, res) => {
   const a = appById(req.params.id);
   if (!a) return res.status(404).json({ error: 'App nicht gefunden' });
   const action = req.body.action;
@@ -260,14 +260,14 @@ app.post('/api/apps/:id/action', (req, res) => {
       const flag = process.platform === 'win32' ? '/c' : '-c';
       const pre = ensureExtRepoCmd(a); // endet mit "&& " bzw. ist leer
       const inDir = a.repoUrl ? `cd "${cwd.replace(/\\/g, '/')}" && ` : '';
-      return res.json(proc.startLongRunning(a.id, {
+      return res.json(await proc.startLongRunning(a.id, {
         cmd: sh,
         args: [flag, pre + inDir + `npm install --no-audit --no-fund && npx expo start --port ${port}`],
         cwd: a.repoUrl ? undefined : cwd,
         kind: 'expo', port, env: envx,
       }));
     }
-    return res.json(proc.startLongRunning(a.id, {
+    return res.json(await proc.startLongRunning(a.id, {
       cmd: 'npx', args: ['expo', 'start', '--port', String(port)], cwd, kind: 'expo', port,
       env: envx,
     }));

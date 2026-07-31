@@ -6,7 +6,10 @@
   "type": "commonjs",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "_kommentar_test": "Der Prozess-Test prueft Linux-Verhalten (Prozessgruppen, Ports) und muss deshalb im selben Image wie der Container laufen — unter Windows beendet er sich sofort mit einem Hinweis.",
+    "test": "node test/proc.test.js",
+    "test:docker": "docker run --rm -v \"%cd%:/studio\" -w /studio -e STUDIO_DATA_DIR=/tmp/sd node:22-bookworm node test/proc.test.js"
   },
   "dependencies": {
     "archiver": "^7.0.1",
