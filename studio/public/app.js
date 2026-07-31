@@ -342,11 +342,62 @@ function qrModal(name, url, hint) {
 
 function logModal(a) {
   const body = el('div');
+
+  /* Werkzeugleiste: Logs lassen sich im Browser nur muehsam markieren (sie
+     aktualisieren sich alle 1,5 s und scrollen dabei weg). Diese drei Knoepfe
+     nehmen einem das ab. */
+  const leiste = el('div', 'row');
+  leiste.style.cssText = 'display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap';
+
+  const btnKopieren = el('button', 'btn sm', '📋 Alles kopieren');
+  const btnDatei    = el('button', 'btn sm', '💾 Als Datei speichern');
+  const btnPause    = el('button', 'btn sm', '⏸ Aktualisierung pausieren');
+  leiste.append(btnKopieren, btnDatei, btnPause);
+  body.appendChild(leiste);
+
   const pre = el('div', 'log', 'Lade Logs …'); body.appendChild(pre);
   modalShell(a.name + ' · Logs', body, true);
+
+  let roh = '';
+  let pausiert = false;
+
+  btnKopieren.onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(roh);
+      btnKopieren.textContent = '✅ Kopiert!';
+      setTimeout(() => { btnKopieren.textContent = '📋 Alles kopieren'; }, 1800);
+    } catch {
+      /* Zwischenablage gesperrt (kein HTTPS): dann wenigstens alles markieren */
+      const r = document.createRange();
+      r.selectNodeContents(pre);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(r);
+      btnKopieren.textContent = 'markiert - jetzt Strg+C';
+      setTimeout(() => { btnKopieren.textContent = '📋 Alles kopieren'; }, 2500);
+    }
+  };
+
+  btnDatei.onclick = () => {
+    const blob = new Blob([roh], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = el('a');
+    link.href = url;
+    link.download = a.id + '-log.txt';
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  };
+
+  btnPause.onclick = () => {
+    pausiert = !pausiert;
+    btnPause.textContent = pausiert ? '▶ Aktualisierung fortsetzen' : '⏸ Aktualisierung pausieren';
+  };
+
   const refresh = async () => {
+    if (pausiert) return;
     try {
       const d = await api('/api/apps/' + a.id + '/logs');
+      roh = d.lines.map((l) => l.line).join('\n');
       pre.innerHTML = d.lines.map((l) => {
         const cls = /error|fehler|fail/i.test(l.line) ? ' class="err"' : '';
         return '<span' + cls + '>' + esc(l.line) + '</span>';
