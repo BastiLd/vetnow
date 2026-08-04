@@ -32,6 +32,10 @@
     <div class="modal" id="modal"></div>
   </div>
 
+  <!-- Download-Panel: liegt BEWUSST außerhalb von #view, damit render()
+       (setzt #view.innerHTML = '') laufende Downloads nicht mehr abhängt. -->
+  <div class="pull-panel" id="pullPanel" style="display:none"></div>
+
   <div class="toast-host" id="toastHost"></div>
 
   <script src="app.js"></script>

@@ -7,6 +7,7 @@ import { useHeaderHeight } from '@react-navigation/elements';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { C, R } from '../theme';
 import { Meta, StarRating, toast } from '../components';
 import { VNIcon } from '../icons';
@@ -60,9 +61,11 @@ function BubbleWrap({ m, mine, children }) {
 /* Zeitzeile: Uhrzeit + optional „(bearbeitet)" + Herkunft der Antwort.
    `source` ist optional — alte Nachrichten zeigen wie bisher nur die Zeit. */
 function messageStamp(m) {
-  return m.time
-    + (m.editedAt ? ' · (bearbeitet)' : '')
-    + (m.source === 'ai' ? ' · KI' : m.source === 'bot' ? ' · Bot' : '');
+  const src = m.source === 'ai-vision' ? ' · KI · Bild'
+    : m.source === 'ai' ? ' · KI'
+      : m.source === 'bot' ? ' · Bot'
+        : m.source === 'error' ? ' · Hinweis' : '';
+  return m.time + (m.editedAt ? ' · (bearbeitet)' : '') + src;
 }
 
 export default function ChatThreadScreen({ route, navigation }) {
@@ -78,6 +81,7 @@ export default function ChatThreadScreen({ route, navigation }) {
 
   const [draft, setDraft] = React.useState('');
   const [pendingImg, setPendingImg] = React.useState(null);
+  const [pendingImgB64, setPendingImgB64] = React.useState(null);
   const [editIdx, setEditIdx] = React.useState(null); // Index der Nachricht im Bearbeiten-Modus
   const scrollRef = React.useRef(null);
   const headerHeight = useHeaderHeight();
@@ -133,12 +137,20 @@ export default function ChatThreadScreen({ route, navigation }) {
         const history = isGreeting
           ? [sys, { role: 'user', content: '(Der Chat wurde gerade geöffnet — begrüße kurz und freundlich.)' }]
           : [sys, ...toAiMessages(arr, other, null)];
-        const text = await aiChat({ messages: history, model: settings.aiModel, aiBaseUrl: settings.aiBaseUrl });
+        const r = await aiChat({ messages: history, model: settings.aiModel, aiBaseUrl: settings.aiBaseUrl });
         if (!alive) return;
         setTyping(false);
-        addMessage(chat.id, { from: other, text, time: 'jetzt', source: 'ai' });
-      } catch {
+        addMessage(chat.id, { from: other, text: r.text, time: 'jetzt', source: r.vision ? 'ai-vision' : 'ai', aiModel: r.model });
+      } catch (err) {
         if (!alive) return;
+        /* Unterscheiden statt alles verschlucken: KI offline → Bot übernimmt
+           still. Problem mit dem BILD → sichtbarer Hinweis, sonst erfährt man
+           nie, dass das Foto nie angekommen ist. */
+        if (err && err.visible) {
+          setTyping(false);
+          addMessage(chat.id, { from: other, text: '⚠️ ' + err.message, time: 'jetzt', source: 'error' });
+          return;
+        }
         let texts;
         if (isGreeting) texts = [botGreetingText(other, practiceName)];
         else if (lastM && lastM.type === 'image') texts = [botImageReply(other)];
@@ -168,7 +180,11 @@ export default function ChatThreadScreen({ route, navigation }) {
       if (!t) { toast('Text darf nicht leer sein.', 'error'); return; }
       editMessage(chatId, editIdx, t); setEditIdx(null); setDraft(''); toast('Nachricht bearbeitet.', 'success'); return;
     }
-    if (pendingImg && text == null) { addMessage(chatId, { from: me, type: 'image', src: pendingImg, text: t, time: 'jetzt' }); setPendingImg(null); setDraft(''); return; }
+    if (pendingImg && text == null) {
+      // srcB64 = Bilddaten für die KI, src = Pfad für die Anzeige.
+      addMessage(chatId, { from: me, type: 'image', src: pendingImg, srcB64: pendingImgB64 || undefined, text: t, time: 'jetzt' });
+      setPendingImg(null); setPendingImgB64(null); setDraft(''); return;
+    }
     if (!t) return;
     addMessage(chatId, { from: me, text: t, time: 'jetzt' });
     if (text == null) setDraft('');
@@ -202,9 +218,36 @@ export default function ChatThreadScreen({ route, navigation }) {
     Alert.alert('Nachricht', mine ? 'Ihre Nachricht' : 'Nachricht der Gegenseite', opts);
   };
 
+  /* Ein Bild aus dem Picker aufbereiten.
+     WICHTIG: Der Picker liefert nur einen Dateipfad (file:///…) — darin stecken
+     KEINE Bilddaten. Genau deshalb konnte bisher kein Bild bei der KI ankommen.
+     Wir rechnen das Foto deshalb auf MAX_IMAGE_PX herunter und holen uns die
+     Rohdaten als Base64 (`srcB64`). `src` bleibt der Pfad, weil <Image> ihn
+     zum Anzeigen braucht. */
+  const MAX_IMAGE_PX = 1024;
+  const prepareImage = async (asset) => {
+    try {
+      const long = Math.max(asset.width || 0, asset.height || 0);
+      const ctx = ImageManipulator.manipulate(asset.uri);
+      if (long > MAX_IMAGE_PX) {
+        if ((asset.width || 0) >= (asset.height || 0)) ctx.resize({ width: MAX_IMAGE_PX });
+        else ctx.resize({ height: MAX_IMAGE_PX });
+      }
+      const img = await ctx.renderAsync();
+      const out = await img.saveAsync({ format: SaveFormat.JPEG, compress: 0.7, base64: true });
+      return { uri: out.uri, b64: out.base64 || '' };
+    } catch {
+      // Verkleinern fehlgeschlagen → wenigstens anzeigen können.
+      return { uri: asset.uri, b64: asset.base64 || '' };
+    }
+  };
+
   const pickImage = async () => {
     const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.6 });
-    if (!res.canceled && res.assets && res.assets[0]) { setPendingImg(res.assets[0].uri); toast('Bild bereit zum Senden.', 'info'); }
+    if (res.canceled || !res.assets || !res.assets[0]) return;
+    const p = await prepareImage(res.assets[0]);
+    setPendingImg(p.uri); setPendingImgB64(p.b64);
+    toast('Bild bereit zum Senden.', 'info');
   };
 
   /* Kamera: braucht kein zusätzliches Paket, aber zur Laufzeit die Erlaubnis.
@@ -214,7 +257,10 @@ export default function ChatThreadScreen({ route, navigation }) {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) { toast('Kamera-Zugriff nicht erlaubt.', 'error'); return; }
     const res = await ImagePicker.launchCameraAsync({ quality: 0.6 });
-    if (!res.canceled && res.assets && res.assets[0]) { setPendingImg(res.assets[0].uri); toast('Foto bereit zum Senden.', 'info'); }
+    if (res.canceled || !res.assets || !res.assets[0]) return;
+    const p = await prepareImage(res.assets[0]);
+    setPendingImg(p.uri); setPendingImgB64(p.b64);
+    toast('Foto bereit zum Senden.', 'info');
   };
 
   const pickFile = async () => {
@@ -354,7 +400,7 @@ export default function ChatThreadScreen({ route, navigation }) {
         <View style={st.preview}>
           <Image source={{ uri: pendingImg }} style={st.previewImg} />
           <Meta style={{ flex: 1, marginTop: 0 }}>Bild angehängt</Meta>
-          <TouchableOpacity onPress={() => setPendingImg(null)} hitSlop={8}><VNIcon.x s={18} c={C.ink2} /></TouchableOpacity>
+          <TouchableOpacity onPress={() => { setPendingImg(null); setPendingImgB64(null); }} hitSlop={8}><VNIcon.x s={18} c={C.ink2} /></TouchableOpacity>
         </View>
       ) : null}
 

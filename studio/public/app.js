@@ -41,12 +41,36 @@ const SETTINGS_REGISTRY = [
   { key: 'ollamaUrl', cat: 'KI', type: 'text', placeholder: 'leer = automatisch (HOST_IP:11434)',
     title: 'Ollama-Adresse', desc: 'Wo dein Ollama läuft. Leer lassen = automatisch die Server-IP mit Standard-Port 11434.',
     keywords: 'ollama url adresse server ki modell verbindung port 11434 host endpoint' },
-  { key: 'ollamaModel', cat: 'KI', type: 'text', placeholder: 'z. B. qwen2.5:3b',
-    title: 'Standard-KI-Modell', desc: 'Dieses Modell antwortet, wenn die App keinen eigenen Modellnamen mitschickt. Im KI-Tab installieren & wechseln.',
-    keywords: 'modell standard default gemma llama qwen bot antworten chat ki auswahl' },
+  { key: 'ollamaModel', cat: 'KI', type: 'text', placeholder: 'z. B. qwen2.5:7b',
+    title: 'Vordergrund-Modell (Text)', desc: 'Beantwortet normale Chat-Nachrichten ohne Bild. Bequemer umzustellen im KI-Tab.',
+    keywords: 'modell standard default vordergrund text gemma llama qwen bot antworten chat ki auswahl' },
+  { key: 'ollamaVisionModel', cat: 'KI', type: 'text', placeholder: 'z. B. llama3.2-vision:11b (leer = aus)',
+    title: 'Hintergrund-Modell (Bilder)', desc: 'Übernimmt automatisch, sobald eine Nachricht ein Foto enthält. Leer lassen = Bilderkennung aus; dann meldet die App ehrlich, dass sie das Bild nicht ansehen kann.',
+    keywords: 'vision bild bilder foto multimodal hintergrund llava erkennung kamera sehen' },
+  { key: 'aiAutoVision', cat: 'KI', type: 'toggle',
+    title: 'Automatisch aufs Bild-Modell umschalten', desc: 'An: Bei Nachrichten mit Foto antwortet das Hintergrund-Modell, sonst das Vordergrund-Modell. Aus: Es antwortet immer das Vordergrund-Modell.',
+    keywords: 'automatisch umschalten wechseln vision bild modell auto' },
   { key: 'aiTimeoutSec', cat: 'KI', type: 'number', min: 10, max: 600,
-    title: 'KI-Antwortzeit-Limit (Sekunden)', desc: 'Nach dieser Zeit wird eine KI-Antwort abgebrochen (kleine Server brauchen länger).',
-    keywords: 'timeout limit langsam abbrechen warten antwortzeit dauer sekunden' },
+    title: 'Zeitlimit Text-Antwort (Sekunden)', desc: 'Nach dieser Zeit wird eine reine Text-Antwort abgebrochen (kleine Server brauchen länger).',
+    keywords: 'timeout limit langsam abbrechen warten antwortzeit dauer sekunden text' },
+  { key: 'aiVisionTimeoutSec', cat: 'KI', type: 'number', min: 30, max: 900,
+    title: 'Zeitlimit Bild-Antwort (Sekunden)', desc: 'Bildverarbeitung auf der CPU dauert deutlich länger — hier lieber großzügig einstellen (Standard 180 s).',
+    keywords: 'timeout bild vision langsam cpu warten sekunden limit' },
+  { key: 'aiMaxImagePx', cat: 'KI', type: 'number', min: 256, max: 2048,
+    title: 'Bild verkleinern auf … Pixel', desc: 'Längste Bildkante, bevor das Foto an die KI geht. Kleiner = schneller und weniger Speicher. Unter 512 leidet die Erkennung.',
+    keywords: 'bild größe verkleinern pixel auflösung komprimieren speicher schneller' },
+  { key: 'aiTemperature', cat: 'KI', type: 'number', min: 0, max: 2, step: 0.1,
+    title: 'Kreativität (temperature)', desc: 'Niedrig = sachlich und vorhersehbar, hoch = fantasievoller. Für medizinische Auskünfte bewusst niedrig (0,3–0,5).',
+    keywords: 'temperature kreativität zufall streuung sachlich fantasie modell feineinstellung' },
+  { key: 'aiTopP', cat: 'KI', type: 'number', min: 0.1, max: 1, step: 0.05,
+    title: 'Wortauswahl (top_p)', desc: 'Wie breit das Modell aus möglichen Wörtern wählt. 0,9 ist ein guter Standard.',
+    keywords: 'top_p nucleus wortauswahl vielfalt feineinstellung modell' },
+  { key: 'aiNumCtx', cat: 'KI', type: 'number', min: 512, max: 32768,
+    title: 'Gedächtnis (num_ctx)', desc: 'Wie viel Gesprächsverlauf das Modell gleichzeitig sieht. Größer = mehr Kontext, aber mehr Arbeitsspeicher.',
+    keywords: 'kontext gedächtnis num_ctx verlauf länge speicher token' },
+  { key: 'aiRepeatPenalty', cat: 'KI', type: 'number', min: 1, max: 2, step: 0.05,
+    title: 'Wiederholungen bremsen (repeat_penalty)', desc: 'Höher = das Modell wiederholt sich seltener. 1,15 hat sich bewährt.',
+    keywords: 'wiederholung repeat penalty schleife doppelt feineinstellung' },
 
   // --- Updates ---
   { key: 'updateCheckMin', cat: 'Updates', type: 'number', min: 0, max: 1440,
@@ -68,25 +92,72 @@ const SETTINGS_REGISTRY = [
     keywords: 'eigene projekte fremde repos git url andere apps duolingo hinzufügen generisch clone' },
 ];
 
-// Kuratierter Modell-Katalog für den KI-„Shop“
+/* Kuratierter Modell-Katalog für den KI-„Shop".
+   Strukturiert statt „alles in einen Satz": `gb` = Download, `ram` = grober
+   Arbeitsspeicherbedarf beim Laden, `vision` = versteht Bilder, `stars` = wie
+   gut das Modell für diesen Einsatzzweck (Deutsch + Tiermedizin-Chat) ist.
+
+   WICHTIG zur Herkunft der Angaben: Größen und Fähigkeiten stammen aus dem
+   Ollama-Katalog und sind Richtwerte. Ob ein installiertes Modell WIRKLICH
+   Bilder kann, holt sich das Studio live über /api/ai/model/:name
+   (Ollama `capabilities`) — der Katalog ist nur die Vorabinfo vor dem Download. */
 const MODEL_CATALOG = [
-  { name: 'qwen2.5:3b', size: '1,9 GB', desc: 'Qwen 2.5 3B — stark bei Anweisungen, kompakt, gutes Deutsch. STANDARD und Empfehlung für Server mit ≤ 8 GB RAM (braucht ~3 GB).', star: true },
-  { name: 'qwen2.5:7b', size: '4,7 GB', desc: 'Qwen 2.5 7B — die klügere, aber deutlich hungrigere Variante. SEHR gutes Deutsch, braucht aber ~8 GB RAM allein für Ollama — auf einem 8-GB-Server oft zu langsam. Vorher im KI-Tab gegen 3b testen.' },
-  { name: 'gemma2:2b', size: '1,6 GB', desc: 'Google Gemma 2 — klein, flott, gutes Deutsch. Für schwache Server.' },
-  { name: 'llama3.2:1b', size: '1,3 GB', desc: 'Meta Llama 3.2 — sehr schnell, für schwache Hardware.' },
-  { name: 'llama3.2:3b', size: '2,0 GB', desc: 'Meta Llama 3.2 — guter Allrounder mit mehr Verständnis.' },
-  { name: 'qwen2.5:1.5b', size: '1,0 GB', desc: 'Qwen 2.5 — winzig und erstaunlich fähig.' },
-  { name: 'phi3.5', size: '2,2 GB', desc: 'Microsoft Phi-3.5 — klug für seine Größe.' },
-  { name: 'mistral:7b', size: '4,1 GB', desc: 'Mistral 7B — deutlich stärker, braucht ~8 GB RAM.' },
-  { name: 'gemma2:9b', size: '5,4 GB', desc: 'Gemma 2 9B — sehr gute Qualität, braucht ~10 GB RAM.' },
-  { name: 'llava:7b', size: '4,7 GB', desc: 'LLaVA — versteht auch BILDER (multimodal).' },
-  { name: 'tinyllama', size: '0,6 GB', desc: 'Mini-Modell zum schnellen Ausprobieren der Kette.' },
+  // --- Text: Vordergrund ---
+  { name: 'qwen2.5:7b', gb: 4.7, ram: 6, cat: 'Text', stars: 5, star: true,
+    desc: 'Unsere Empfehlung fürs Textmodell. Sehr gutes Deutsch, hält den Gesprächsfaden und befolgt Anweisungen zuverlässig — genau das, was der Praxis-Chat braucht.' },
+  { name: 'qwen2.5:3b', gb: 1.9, ram: 3, cat: 'Text', stars: 4,
+    desc: 'Die kompakte Variante derselben Familie: spürbar schneller, sprachlich noch gut. Sinnvoll, wenn der Server gleichzeitig ein Vision-Modell stemmen muss.' },
+  { name: 'gemma2:9b', gb: 5.4, ram: 8, cat: 'Text', stars: 4,
+    desc: 'Google Gemma 2 in groß — sehr saubere Formulierungen, dafür langsamer als qwen2.5:7b.' },
+  { name: 'mistral:7b', gb: 4.1, ram: 6, cat: 'Text', stars: 3,
+    desc: 'Solider Allrounder. Deutsch ist ordentlich, aber schwächer als bei den qwen-Modellen.' },
+  { name: 'gemma2:2b', gb: 1.6, ram: 3, cat: 'Text', stars: 3,
+    desc: 'Klein und flott mit erstaunlich gutem Deutsch. Gute Wahl für schwache Server.' },
+  { name: 'llama3.2:3b', gb: 2.0, ram: 3, cat: 'Text', stars: 3,
+    desc: 'Meta Llama 3.2 — brauchbarer Allrounder, im Deutschen etwas hölzern.' },
+  { name: 'phi3.5', gb: 2.2, ram: 3, cat: 'Text', stars: 3,
+    desc: 'Microsoft Phi-3.5 — klug für seine Größe, antwortet gern knapp.' },
+  { name: 'qwen2.5:1.5b', gb: 1.0, ram: 2, cat: 'Text', stars: 2,
+    desc: 'Winzig und erstaunlich fähig. Für Tests der Kette, nicht für die Vorführung.' },
+  { name: 'llama3.2:1b', gb: 1.3, ram: 2, cat: 'Text', stars: 2,
+    desc: 'Sehr schnell, dafür inhaltlich schwach. Nur für ganz schwache Hardware.' },
+  { name: 'tinyllama', gb: 0.6, ram: 1, cat: 'Text', stars: 1,
+    desc: 'Mini-Modell, um zu prüfen ob die Kette Studio → Ollama überhaupt läuft. Antworten sind bewusst nicht ernst zu nehmen.' },
+
+  // --- Bild: Hintergrund ---
+  { name: 'llama3.2-vision:11b', gb: 7.9, ram: 10, vision: true, cat: 'Bild', stars: 5, starVision: true,
+    desc: 'Stärkstes Bildverständnis der Kandidaten UND das beste Deutsch davon. Erste Wahl fürs Hintergrund-Modell, wenn Genauigkeit wichtiger ist als Tempo (auf der CPU 30-60 s pro Bild).' },
+  { name: 'qwen2.5vl:7b', gb: 6.0, ram: 8, vision: true, cat: 'Bild', stars: 4,
+    desc: 'Bild-Variante der qwen-Familie — passt sprachlich zum Textmodell und ist etwas schneller als das 11B-Modell.' },
+  { name: 'llava:13b', gb: 8.0, ram: 10, vision: true, cat: 'Bild', stars: 3,
+    desc: 'Große LLaVA-Variante als Rückfall. Erkennt viel, formuliert aber oft englisch-lastig.' },
+  { name: 'llava:7b', gb: 4.7, ram: 6, vision: true, cat: 'Bild', stars: 2,
+    desc: 'Kleine LLaVA. ACHTUNG: Genau dieses Modell ist auf diesem Server beim Laden abgestürzt (Bild-Encoder auf der CPU, dann exit code -1). Erst nach dem CPU-Fix erneut versuchen.' },
+  { name: 'moondream', gb: 1.7, ram: 3, vision: true, cat: 'Bild', stars: 2,
+    desc: 'Sehr kleines Bildmodell — läuft fast überall und ist schnell, beschreibt aber nur grob und antwortet auf Englisch.' },
 ];
+
+/* Sterne-Anzeige (kompakt, ohne Bilder) */
+function starsHtml(n) {
+  const s = Math.max(0, Math.min(5, n || 0));
+  return '<span class="stars" title="Eignung für den VetNow-Chat: ' + s + ' von 5">' + '★'.repeat(s) + '<span class="dim">' + '★'.repeat(5 - s) + '</span></span>';
+}
 
 const PALETTE = ['#0f9b8e', '#0c7d72', '#2e6f9e', '#16a34a', '#eab308', '#dc2626', '#8a5d05', '#6c7d79', '#7c3aed', '#db2777'];
 const EMOJIS = ['🐾', '📱', '🧩', '📦', '🌐', '🚀', '⚙️', '💊', '🏥', '🐶', '🐱', '📊', '🔧', '✨', '🗂️', '🔔', '⚖️', '🦉', '🎓', '🧪'];
 
 let STATE = { hostIp: 'localhost', apps: [], groups: [], settings: {}, server: {}, tab: 'apps', groupId: null };
+
+/* ---- Laufende Modell-Downloads ----
+   Bewusst MODUL-GLOBAL und nicht im DOM: render() setzt `#view.innerHTML = ''`
+   und hat damit früher die Fortschrittsbalken aus dem Dokument geworfen —
+   pullModel() schrieb danach in abgehängte Knoten, der Download lief unsichtbar
+   weiter. Auslöser waren u. a. ein Tabwechsel, ein zweiter fertiger Download,
+   „Als Standard nutzen" und das Löschen eines Modells.
+   Jetzt liegt der Zustand hier, die Anzeige liest nur daraus — und das Panel
+   selbst hängt außerhalb von #view (siehe index.html). */
+const activePulls = new Map(); // name -> { pct, status, phase, done, error, doneAt }
+let pullPanelOpen = true;
 let logTimer = null;
 let refreshTimer = null;
 let updateTimer = null;
@@ -167,13 +238,21 @@ function setTab(tab, groupId) {
   render();
 }
 
+/* Jeder Rerender bekommt eine eigene Nummer. Asynchrone Seiten (renderAi)
+   prüfen nach jedem await, ob sie noch die aktuelle sind — sonst befüllten sie
+   längst abgehängte Knoten und die Seite blieb leer. */
+let renderSeq = 0;
+
 function render() {
   const v = $('view'); v.innerHTML = '';
+  const my = ++renderSeq;
+  const stillCurrent = () => my === renderSeq && $('view') === v.parentNode ? true : my === renderSeq;
   if (STATE.tab === 'apps') renderGroups(v);
   else if (STATE.tab === 'group') renderGroupDetail(v, STATE.groupId);
-  else if (STATE.tab === 'ai') renderAi(v);
+  else if (STATE.tab === 'ai') renderAi(v, stillCurrent);
   else if (STATE.tab === 'settings') renderSettings(v);
   else if (STATE.tab === 'system') renderSystem(v);
+  renderPullPanel();
 }
 
 // ============================================================
@@ -251,8 +330,24 @@ function renderGroupDetail(v, groupId) {
 
 function kindLabel(a) { return a.kind === 'web' ? 'Web-App / PWA' : a.kind === 'expo' ? 'Expo · iPhone' : 'Chrome-Extension'; }
 
+/* Ein Wort für den Zustand einer App — steuert auch den Farbstreifen links.
+   Vorher musste man sich das aus mehreren Pills zusammenreimen. */
+function appState(a) {
+  const st = a.status || {};
+  if (st.busy) return { key: 'busy', label: (st.task || 'Arbeitet') + ' …', color: '#e3a008' };
+  if (a.kind === 'expo') return st.running
+    ? { key: 'on', label: 'Läuft · Port ' + (st.port || a.expoPort), color: '#16a34a' }
+    : { key: 'off', label: 'Gestoppt', color: '#6c7d79' };
+  if (a.kind === 'web') return a.built
+    ? { key: 'on', label: 'Gebaut & abrufbar', color: '#16a34a' }
+    : { key: 'off', label: 'Noch nicht gebaut', color: '#6c7d79' };
+  return { key: 'off', label: 'Bereit', color: '#6c7d79' };
+}
+
 function renderCard(a) {
-  const card = el('div', 'card');
+  const stt = appState(a);
+  const card = el('div', 'card state-' + stt.key);
+  card.style.setProperty('--state-color', stt.color);
   const head = el('div', 'card-head');
   const icon = el('span', 'card-icon', esc(a.icon || '📦')); icon.style.background = (a.color || '#0f9b8e') + '26';
   head.appendChild(icon);
@@ -352,14 +447,27 @@ function logModal(a) {
   const btnKopieren = el('button', 'btn sm', '📋 Alles kopieren');
   const btnDatei    = el('button', 'btn sm', '💾 Als Datei speichern');
   const btnPause    = el('button', 'btn sm', '⏸ Aktualisierung pausieren');
-  leiste.append(btnKopieren, btnDatei, btnPause);
+  const btnNurFehler = el('button', 'btn sm', '⚠️ Nur Fehler');
+  leiste.append(btnKopieren, btnDatei, btnPause, btnNurFehler);
   body.appendChild(leiste);
+
+  /* Suche im Log — bei mehreren hundert Zeilen findet man die relevante
+     Stelle sonst nicht. Filtert live, ohne die Aktualisierung zu stoppen. */
+  const suchLeiste = el('div', 'search-bar');
+  suchLeiste.appendChild(el('span', null, '🔍'));
+  const suche = el('input');
+  suche.placeholder = 'Im Log suchen (z. B. „error", „port", Modellname) …';
+  suchLeiste.appendChild(suche);
+  const treffer = el('div', 'hint'); treffer.style.marginTop = '4px';
+  body.append(suchLeiste, treffer);
 
   const pre = el('div', 'log', 'Lade Logs …'); body.appendChild(pre);
   modalShell(a.name + ' · Logs', body, true);
 
   let roh = '';
   let pausiert = false;
+  let nurFehler = false;
+  let alleZeilen = [];
 
   btnKopieren.onclick = async () => {
     try {
@@ -393,16 +501,45 @@ function logModal(a) {
     btnPause.textContent = pausiert ? '▶ Aktualisierung fortsetzen' : '⏸ Aktualisierung pausieren';
   };
 
+  /* Zeilen einfärben: Fehler rot, Warnungen gelb, Erfolg/Bereit grün.
+     Vorher war ALLES gleich grau — man musste jede Zeile lesen. */
+  const stufe = (line) => {
+    if (/\b(error|fehler|fail|failed|exception|cannot|denied|refused|exit code [1-9-])/i.test(line)) return 'err';
+    if (/\b(warn|warning|deprecat|achtung|hinweis)/i.test(line)) return 'warn';
+    if (/\b(success|erfolgreich|fertig|ready|started|listening|built|kompiliert|✅)/i.test(line)) return 'ok';
+    return '';
+  };
+
+  const zeichne = () => {
+    const q = suche.value.trim().toLowerCase();
+    let zeilen = alleZeilen;
+    if (nurFehler) zeilen = zeilen.filter((l) => stufe(l) === 'err');
+    if (q) zeilen = zeilen.filter((l) => l.toLowerCase().includes(q));
+    treffer.textContent = (q || nurFehler)
+      ? `${zeilen.length} von ${alleZeilen.length} Zeilen` : '';
+    pre.innerHTML = zeilen.map((l) => {
+      const cls = stufe(l);
+      const txt = q ? highlight(l, q) : esc(l);
+      return cls ? '<span class="' + cls + '">' + txt + '</span>' : '<span>' + txt + '</span>';
+    }).join('\n') || (alleZeilen.length ? '(keine Zeile passt zum Filter)' : '(noch keine Ausgabe)');
+    // Nur automatisch nach unten springen, wenn nicht gerade gefiltert wird.
+    if (!q && !nurFehler) pre.scrollTop = pre.scrollHeight;
+  };
+  suche.oninput = zeichne;
+  btnNurFehler.onclick = () => {
+    nurFehler = !nurFehler;
+    btnNurFehler.classList.toggle('primary', nurFehler);
+    btnNurFehler.textContent = nurFehler ? '↩︎ Alle Zeilen' : '⚠️ Nur Fehler';
+    zeichne();
+  };
+
   const refresh = async () => {
     if (pausiert) return;
     try {
       const d = await api('/api/apps/' + a.id + '/logs');
-      roh = d.lines.map((l) => l.line).join('\n');
-      pre.innerHTML = d.lines.map((l) => {
-        const cls = /error|fehler|fail/i.test(l.line) ? ' class="err"' : '';
-        return '<span' + cls + '>' + esc(l.line) + '</span>';
-      }).join('\n') || '(noch keine Ausgabe)';
-      pre.scrollTop = pre.scrollHeight;
+      alleZeilen = d.lines.map((l) => l.line);
+      roh = alleZeilen.join('\n');
+      zeichne();
     } catch { /* egal */ }
   };
   refresh();
@@ -561,105 +698,378 @@ function groupsModal() {
 }
 
 // ============================================================
-//  KI-Seite: Ollama-Status, Modell-Shop, Test-Chat
+//  KI-Seite: Status, Vorder-/Hintergrundmodell, Modell-Browser, Schnelltest
 // ============================================================
-async function renderAi(v) {
-  v.appendChild(el('div', null, '<div class="page-title">🧠 KI (Ollama)</div><div class="page-sub">Modelle laufen LOKAL auf deinem Server — kostenlos, ohne Cloud. Der Chat-Bot der Apps nutzt das hier gewählte Standard-Modell.</div>'));
+let aiCache = { status: null, installed: [], running: [], info: {} };
+let modelQuery = '';
+let modelFilter = 'Alle';
 
+/* Live-Fähigkeiten eines installierten Modells (Ollama /api/show).
+   Damit steht „Kann Bilder" nicht mehr hartkodiert im Katalog, sondern kommt
+   direkt vom Modell selbst. Ergebnisse werden hier gepuffert. */
+async function modelInfo(name) {
+  if (aiCache.info[name]) return aiCache.info[name];
+  try {
+    const d = await api('/api/ai/model/' + encodeURIComponent(name));
+    aiCache.info[name] = d;
+    return d;
+  } catch { return null; }
+}
+
+function catalogEntry(name) {
+  const base = String(name).replace(/:latest$/, '');
+  return MODEL_CATALOG.find((m) => m.name === name || m.name === base || base.startsWith(m.name.split(':')[0] + ':') && m.name === name) || null;
+}
+
+/* Kann dieses Modell Bilder? Live-Info schlägt Katalog, Katalog schlägt Namensrat. */
+function isVision(name) {
+  const info = aiCache.info[name];
+  if (info && Array.isArray(info.capabilities) && info.capabilities.length) return !!info.vision;
+  const c = catalogEntry(name);
+  if (c) return !!c.vision;
+  return /vision|llava|vl:|moondream|minicpm-v/i.test(name);
+}
+
+async function renderAi(v, stillCurrent) {
+  const ok = () => (stillCurrent ? stillCurrent() : true);
+
+  v.appendChild(el('div', null,
+    '<div class="page-title">🧠 KI (Ollama)</div>'
+    + '<div class="page-sub">Die Modelle laufen LOKAL auf deinem Server — kostenlos, ohne Cloud. '
+    + '<b>Vordergrund</b> beantwortet normale Nachrichten, <b>Hintergrund</b> springt automatisch ein, sobald ein Bild im Chat ist.</div>'));
+
+  // ---- Statusleiste: Verbindung + welches Modell wofür ----
   const statusBox = el('div', 'ai-status');
   statusBox.innerHTML = '<span class="ai-dot"></span><div style="flex:1"><b>Prüfe Verbindung…</b></div>';
   v.appendChild(statusBox);
 
+  const slotWrap = el('div', 'slot-grid');
+  v.appendChild(slotWrap);
+
+  const runBox = el('div');
+  v.appendChild(runBox);
+
+  // ---- Aktionsleiste ----
+  const actions = el('div', 'row', '');
+  actions.style.margin = '14px 0 4px';
+  const browseBtn = el('button', 'btn primary', '🔎 Modelle durchsuchen & installieren');
+  browseBtn.onclick = () => modelBrowser();
+  const reloadBtn = el('button', 'btn ghost', '↻ Aktualisieren');
+  reloadBtn.onclick = () => { aiCache.info = {}; render(); };
+  actions.append(browseBtn, reloadBtn);
+  v.appendChild(actions);
+
   const installedWrap = el('div');
   v.appendChild(installedWrap);
 
-  v.appendChild(el('div', null, '<div class="page-title" style="font-size:16px;margin-top:8px">🛒 Modell-Shop</div><div class="page-sub">Ein Klick lädt das Modell direkt auf deinen Server (über Ollama).</div>'));
-  const shop = el('div', 'model-grid');
-  v.appendChild(shop);
-
+  // ---- Schnelltest ----
   const chatBox = el('div', 'ai-chat-box');
-  chatBox.innerHTML = '<div style="font-weight:800">💬 Schnelltest</div>';
+  chatBox.innerHTML = '<div style="font-weight:800">💬 Schnelltest</div>'
+    + '<div class="hint" style="margin-top:4px">Frage ans Vordergrund-Modell. Mit Bild antwortet automatisch das Hintergrund-Modell — so lässt sich die Bilderkennung ohne App prüfen.</div>';
   const chatRow = el('div', 'row');
-  const prompt = el('input', 'input'); prompt.placeholder = 'Frag das Standard-Modell etwas … (z. B. „Mein Hund humpelt, was tun?“)';
+  const prompt = el('input', 'input');
+  prompt.placeholder = 'z. B. „Mein Hund humpelt, was tun?" — oder Bild wählen und „Was siehst du?"';
+  const fileBtn = el('button', 'btn', '🖼 Bild');
   const send = el('button', 'btn primary', 'Senden'); send.style.flex = '0 0 auto';
-  chatRow.append(prompt, send);
+  const fileIn = el('input'); fileIn.type = 'file'; fileIn.accept = 'image/*'; fileIn.style.display = 'none';
+  chatRow.append(prompt, fileBtn, send, fileIn);
   chatBox.appendChild(chatRow);
+  const picked = el('div', 'hint'); picked.style.display = 'none';
+  chatBox.appendChild(picked);
   const answer = el('div', 'ai-answer'); answer.style.display = 'none';
   chatBox.appendChild(answer);
   v.appendChild(chatBox);
-  send.onclick = async () => {
-    const q = prompt.value.trim(); if (!q) return;
-    answer.style.display = 'block'; answer.textContent = '⏳ Modell denkt nach…'; send.disabled = true;
+
+  let pickedB64 = null;
+  fileBtn.onclick = () => fileIn.click();
+  fileIn.onchange = async () => {
+    const f = fileIn.files && fileIn.files[0]; fileIn.value = '';
+    if (!f) return;
     try {
-      const d = await api('/api/ai/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: [{ role: 'user', content: q }] }) });
+      const max = parseInt(STATE.settings.aiMaxImagePx, 10) || 1024;
+      const r = await shrinkImageFile(f, max);
+      pickedB64 = r.base64;
+      picked.style.display = 'block';
+      picked.innerHTML = `🖼 <b>${esc(f.name)}</b> · auf ${r.w}×${r.h} px verkleinert (${Math.round(r.bytes / 1024)} KB) — <a href="#" id="dropImg">entfernen</a>`;
+      picked.querySelector('#dropImg').onclick = (e) => { e.preventDefault(); pickedB64 = null; picked.style.display = 'none'; };
+    } catch (e) { toast('Bild konnte nicht gelesen werden: ' + e.message, true); }
+  };
+  send.onclick = async () => {
+    const q = prompt.value.trim();
+    if (!q && !pickedB64) return;
+    answer.style.display = 'block';
+    answer.textContent = pickedB64 ? '⏳ Bild-Modell denkt nach … (auf der CPU dauert das 20-60 s)' : '⏳ Modell denkt nach…';
+    send.disabled = true;
+    const msg = { role: 'user', content: q || 'Was ist auf diesem Bild zu sehen? Antworte auf Deutsch.' };
+    if (pickedB64) msg.images = [pickedB64];
+    try {
+      const d = await api('/api/ai/chat', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [msg] }),
+      });
+      const who = d.vnModel ? ` — geantwortet hat: ${d.vnModel}${d.vnVision ? ' (Bild-Modell)' : ''}` : '';
       answer.textContent = (d.message && d.message.content || '(leer)').trim();
+      answer.appendChild(el('div', 'hint', esc(who)));
     } catch (e) { answer.textContent = '❌ ' + e.message; }
     send.disabled = false;
   };
   prompt.onkeydown = (e) => { if (e.key === 'Enter') send.onclick(); };
 
-  // Status + Modelle laden
+  // ---- Daten laden ----
   let installed = [];
   try {
     const st = await api('/api/ai/status');
+    if (!ok()) return;
+    aiCache.status = st;
     if (st.ok) {
-      statusBox.innerHTML = `<span class="ai-dot ok"></span><div style="flex:1"><b>${esc(st.ollama)}</b> verbunden<div class="hint">${esc(st.url)} · Standard-Modell: <b>${esc(st.defaultModel || '—')}</b></div></div>`;
+      statusBox.innerHTML = `<span class="ai-dot ok"></span><div style="flex:1"><b>${esc(st.ollama)}</b> verbunden`
+        + `<div class="hint">${esc(st.url)}</div></div>`;
       const md = await api('/api/ai/models');
+      if (!ok()) return;
       installed = md.models || [];
+      aiCache.installed = installed;
     } else {
-      statusBox.innerHTML = `<span class="ai-dot"></span><div style="flex:1"><b>Ollama nicht erreichbar</b><div class="hint">${esc(st.url)} — Läuft Ollama auf dem Server? In ZimaOS installieren/starten, dann hier neu laden. Adresse änderbar unter Einstellungen → KI.</div></div>`;
+      statusBox.innerHTML = `<span class="ai-dot"></span><div style="flex:1"><b>Ollama nicht erreichbar</b>`
+        + `<div class="hint">${esc(st.hint || '')}<br>Adresse: ${esc(st.url)} — änderbar unter Einstellungen → KI.</div></div>`;
     }
-  } catch { statusBox.innerHTML = '<span class="ai-dot"></span><div style="flex:1"><b>Studio-API nicht erreichbar</b></div>'; }
-
-  // Installierte Modelle
-  if (installed.length) {
-    const box = el('div');
-    box.appendChild(el('div', null, '<div class="page-title" style="font-size:16px">📦 Installierte Modelle</div>'));
-    const grid = el('div', 'model-grid'); grid.style.marginTop = '10px';
-    installed.forEach((m) => {
-      const isDefault = m.name === STATE.settings.ollamaModel;
-      const c = el('div', 'model-card');
-      c.innerHTML = `<div class="model-name">${esc(m.name)} ${m.sizeGb ? '<span class="size-badge">' + m.sizeGb + ' GB</span>' : ''} ${isDefault ? '<span class="default-badge">Standard ✓</span>' : ''}</div>` +
-        `<div class="model-desc">${esc(m.params || '')} ${esc(m.family || '')}</div>`;
-      const row = el('div', 'row');
-      if (!isDefault) {
-        const act = el('button', 'btn primary sm', '⭐ Als Standard nutzen');
-        act.onclick = async () => { await api('/api/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ollamaModel: m.name }) }); toast('Standard-Modell: ' + m.name); load(true); render(); };
-        row.appendChild(act);
-      }
-      const del = el('button', 'btn danger sm', '🗑');
-      del.onclick = async () => { if (!confirm('Modell „' + m.name + '“ vom Server löschen?')) return; try { await api('/api/ai/models/' + encodeURIComponent(m.name), { method: 'DELETE' }); toast('Modell gelöscht.'); render(); } catch (e) { toast('Fehler: ' + e.message, true); } };
-      row.appendChild(del);
-      c.appendChild(row);
-      grid.appendChild(c);
-    });
-    box.appendChild(grid);
-    installedWrap.appendChild(box);
+  } catch (e) {
+    if (!ok()) return;
+    statusBox.innerHTML = '<span class="ai-dot"></span><div style="flex:1"><b>Studio-API nicht erreichbar</b><div class="hint">' + esc(e.message) + '</div></div>';
   }
 
-  // Shop
-  const installedNames = new Set(installed.map((m) => m.name.split(':latest')[0]));
-  MODEL_CATALOG.forEach((m) => {
-    const has = installedNames.has(m.name) || installed.some((x) => x.name.startsWith(m.name));
-    const c = el('div', 'model-card');
-    c.innerHTML = `<div class="model-name">${m.star ? '⭐ ' : ''}${esc(m.name)} <span class="size-badge">${m.size}</span> ${has ? '<span class="default-badge">installiert</span>' : ''}</div>` +
-      `<div class="model-desc">${esc(m.desc)}</div>`;
-    const prog = el('div', 'progress'); prog.style.display = 'none'; prog.appendChild(el('div'));
-    const progText = el('div', 'hint'); progText.style.display = 'none';
-    c.append(prog, progText);
-    const btn = el('button', 'btn ' + (has ? '' : 'primary') + ' sm', has ? '↻ Erneut laden' : '⬇ Herunterladen');
-    btn.onclick = () => pullModel(m.name, btn, prog, progText);
-    c.appendChild(btn);
-    shop.appendChild(c);
-  });
+  // Fähigkeiten der installierten Modelle live nachladen (für „Kann Bilder")
+  await Promise.all(installed.slice(0, 12).map((m) => modelInfo(m.name)));
+  if (!ok()) return;
+
+  // ---- Vorder-/Hintergrund-Kacheln ----
+  const s = STATE.settings;
+  const slot = (title, sub, current, key, filterVision) => {
+    const box = el('div', 'slot-card');
+    const cur = current || '';
+    const info = aiCache.info[cur];
+    box.innerHTML = `<div class="slot-title">${title}</div><div class="hint">${sub}</div>`
+      + `<div class="slot-model">${cur ? esc(cur) : '<span class="dim">— nicht gesetzt —</span>'}</div>`
+      + (info ? `<div class="chip-row">${info.params ? '<span class="mini-chip">' + esc(info.params) + '</span>' : ''}`
+        + `${info.quant ? '<span class="mini-chip">' + esc(info.quant) + '</span>' : ''}`
+        + `${info.contextLength ? '<span class="mini-chip">' + Math.round(info.contextLength / 1024) + 'k Kontext</span>' : ''}`
+        + `${info.vision ? '<span class="mini-chip vis">🖼 Bilder</span>' : ''}</div>` : '');
+    const pick = el('select', 'input slim');
+    const none = el('option', null, '— kein Modell —'); none.value = ''; pick.appendChild(none);
+    installed.forEach((m) => {
+      if (filterVision && !isVision(m.name)) return;
+      const o = el('option', null, m.name + (isVision(m.name) ? '  🖼' : '')); o.value = m.name;
+      if (m.name === cur) o.selected = true;
+      pick.appendChild(o);
+    });
+    if (cur && !installed.some((m) => m.name === cur)) {
+      const o = el('option', null, cur + ' (nicht installiert!)'); o.value = cur; o.selected = true; pick.appendChild(o);
+    }
+    pick.onchange = async () => {
+      try {
+        await api('/api/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ [key]: pick.value }) });
+        STATE.settings[key] = pick.value;
+        toast(pick.value ? title + ': ' + pick.value : title + ' entfernt.');
+        render();
+      } catch (e) { toast('Speichern fehlgeschlagen: ' + e.message, true); }
+    };
+    box.appendChild(pick);
+    if (filterVision && !installed.some((m) => isVision(m.name))) {
+      box.appendChild(el('div', 'note warn', 'Noch kein Bild-Modell installiert. Über „Modelle durchsuchen" den Filter <b>Kann Bilder</b> nutzen.'));
+    }
+    return box;
+  };
+  slotWrap.append(
+    slot('🗣️ Vordergrund — Text', 'Beantwortet normale Chat-Nachrichten.', s.ollamaModel, 'ollamaModel', false),
+    slot('🖼️ Hintergrund — Bilder', 'Übernimmt automatisch, sobald ein Foto mitkommt.', s.ollamaVisionModel, 'ollamaVisionModel', true),
+  );
+
+  // ---- Was ist gerade wirklich geladen? ----
+  try {
+    const rp = await api('/api/ai/running');
+    if (!ok()) return;
+    aiCache.running = rp.running || [];
+    if (aiCache.running.length) {
+      const b = el('div', 'run-box');
+      b.innerHTML = '<b>⚡ Gerade im Speicher</b>';
+      aiCache.running.forEach((r) => {
+        b.appendChild(el('div', 'run-row',
+          `<span class="mini-chip on">${esc(r.name)}</span> <span class="hint">${r.sizeGb} GB`
+          + (r.vramGb ? ` · davon ${r.vramGb} GB auf der Grafikkarte` : ' · rein auf der CPU') + '</span>'));
+      });
+      runBox.appendChild(b);
+    } else {
+      runBox.appendChild(el('div', 'hint', '💤 Aktuell ist kein Modell geladen — das erste Anfragen dauert deshalb etwas länger.'));
+    }
+  } catch { /* Ollama offline: Statusleiste sagt es bereits */ }
+
+  // ---- Installierte Modelle ----
+  if (installed.length) {
+    installedWrap.appendChild(el('div', null, '<div class="page-title" style="font-size:16px">📦 Installiert (' + installed.length + ')</div>'));
+    const grid = el('div', 'model-grid'); grid.style.marginTop = '10px';
+    installed.forEach((m) => {
+      grid.appendChild(modelCard(m.name, {
+        installed: true, sizeGb: m.sizeGb, info: aiCache.info[m.name], tags: m,
+      }));
+    });
+    installedWrap.appendChild(grid);
+  } else if (aiCache.status && aiCache.status.ok) {
+    installedWrap.appendChild(el('div', 'empty', 'Noch kein Modell installiert. Auf „Modelle durchsuchen & installieren" tippen.'));
+  }
 }
 
-async function pullModel(name, btn, prog, progText) {
-  btn.disabled = true; btn.textContent = '⏳ lädt…';
-  prog.style.display = 'block'; progText.style.display = 'block'; progText.textContent = 'Starte Download…';
+/* Eine Modell-Karte — wird für installierte Modelle UND im Browser benutzt. */
+function modelCard(name, o) {
+  const cat = catalogEntry(name);
+  const info = o.info || aiCache.info[name];
+  const vision = o.installed ? isVision(name) : !!(cat && cat.vision);
+  const isText = name === STATE.settings.ollamaModel;
+  const isVis = name === STATE.settings.ollamaVisionModel;
+  const gb = o.sizeGb != null ? o.sizeGb : (cat ? cat.gb : null);
+
+  const c = el('div', 'model-card' + (isText || isVis ? ' is-active' : ''));
+  const badges = [];
+  if (isText) badges.push('<span class="default-badge">Vordergrund ✓</span>');
+  if (isVis) badges.push('<span class="default-badge vis">Hintergrund ✓</span>');
+  if (o.installed) badges.push('<span class="mini-chip on">installiert</span>');
+  if (vision) badges.push('<span class="mini-chip vis">🖼 Kann Bilder</span>');
+
+  c.innerHTML = `<div class="model-name">${esc(name)} ${gb != null ? '<span class="size-badge">' + String(gb).replace('.', ',') + ' GB</span>' : ''}</div>`
+    + (cat ? `<div class="model-stars">${starsHtml(cat.stars)} <span class="hint">${cat.ram ? '≈ ' + cat.ram + ' GB RAM' : ''}</span></div>` : '')
+    + `<div class="badge-row">${badges.join(' ')}</div>`
+    + `<div class="model-desc">${esc(cat ? cat.desc : (info && info.family ? info.family + ' · ' + (info.params || '') : 'Kein Katalog-Eintrag — Angaben kommen direkt von Ollama.'))}</div>`
+    + (info ? `<div class="chip-row">${info.params ? '<span class="mini-chip">' + esc(info.params) + '</span>' : ''}`
+      + `${info.quant ? '<span class="mini-chip">' + esc(info.quant) + '</span>' : ''}`
+      + `${info.contextLength ? '<span class="mini-chip">' + Math.round(info.contextLength / 1024) + 'k Kontext</span>' : ''}`
+      + `${info.tools ? '<span class="mini-chip">Werkzeuge</span>' : ''}</div>` : '');
+
+  const row = el('div', 'row wrap');
+  if (o.installed) {
+    if (!isText) {
+      const b = el('button', 'btn sm', '🗣️ Als Vordergrund');
+      b.onclick = () => setSlot('ollamaModel', name, 'Vordergrund-Modell');
+      row.appendChild(b);
+    }
+    if (vision && !isVis) {
+      const b = el('button', 'btn sm', '🖼️ Als Hintergrund');
+      b.onclick = () => setSlot('ollamaVisionModel', name, 'Hintergrund-Modell');
+      row.appendChild(b);
+    }
+    const del = el('button', 'btn danger sm', '🗑');
+    del.title = 'Modell vom Server löschen';
+    del.onclick = async () => {
+      if (!confirm('Modell „' + name + '" vom Server löschen?')) return;
+      try {
+        await api('/api/ai/models/' + encodeURIComponent(name), { method: 'DELETE' });
+        delete aiCache.info[name];
+        toast('Modell gelöscht.'); render();
+      } catch (e) { toast('Fehler: ' + e.message, true); }
+    };
+    row.appendChild(del);
+  } else {
+    const p = activePulls.get(name);
+    const btn = el('button', 'btn primary sm', p && !p.done ? '⏳ lädt …' : '⬇ Herunterladen');
+    btn.disabled = !!(p && !p.done);
+    btn.onclick = () => { pullModel(name); render(); };
+    row.appendChild(btn);
+  }
+  c.appendChild(row);
+  return c;
+}
+
+async function setSlot(key, name, label) {
   try {
-    const res = await fetch('/api/ai/pull', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
-    if (!res.ok) throw new Error('Ollama nicht erreichbar');
+    await api('/api/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ [key]: name }) });
+    STATE.settings[key] = name;
+    toast(label + ': ' + name);
+    render();
+  } catch (e) { toast('Speichern fehlgeschlagen: ' + e.message, true); }
+}
+
+/* ---- Schwebender Modell-Browser mit Suche + Filter-Chips ----
+   Gleiches Muster wie die Einstellungs-Suche: Mehrwort-UND-Suche, Treffer
+   hervorgehoben, und es wird nur die INNERE Liste neu gezeichnet — nicht die
+   ganze Seite. Dadurch bleibt die Tastatureingabe flüssig. */
+function modelBrowser() {
+  const body = el('div');
+  const bar = el('div', 'search-bar');
+  bar.appendChild(el('span', null, '🔍'));
+  const inp = el('input');
+  inp.placeholder = 'Modell suchen — Name oder Beschreibung (z. B. „bilder", „deutsch", „klein") …';
+  inp.value = modelQuery;
+  inp.oninput = () => { modelQuery = inp.value; draw(); };
+  bar.appendChild(inp);
+  body.appendChild(bar);
+
+  const FILTERS = ['Alle', 'Empfohlen', 'Installiert', 'Kann Bilder', 'Klein (< 2 GB)'];
+  const chips = el('div', 'cat-chips');
+  FILTERS.forEach((f) => {
+    const b = el('button', 'cat-chip' + (modelFilter === f ? ' is-on' : ''), esc(f));
+    b.onclick = () => { modelFilter = f; chips.querySelectorAll('.cat-chip').forEach((x) => x.classList.toggle('is-on', x.textContent === f)); draw(); };
+    chips.appendChild(b);
+  });
+  body.appendChild(chips);
+
+  const hint = el('div', 'hint');
+  hint.style.margin = '2px 0 8px';
+  hint.innerHTML = 'Die Sterne bewerten die Eignung für den <b>VetNow-Chat</b> (Deutsch + Tiermedizin), nicht die allgemeine Stärke des Modells.';
+  body.appendChild(hint);
+
+  const list = el('div', 'model-grid');
+  body.appendChild(list);
+
+  const installedNames = new Set((aiCache.installed || []).map((m) => m.name));
+  const isInstalled = (n) => installedNames.has(n) || [...installedNames].some((x) => x.split(':latest')[0] === n || x === n + ':latest');
+
+  function matches(m, q) {
+    if (!q) return true;
+    const hay = (m.name + ' ' + m.desc + ' ' + m.cat + (m.vision ? ' bilder bild vision multimodal foto' : ' text')).toLowerCase();
+    return q.toLowerCase().split(/\s+/).every((w) => hay.includes(w));
+  }
+
+  function draw() {
+    list.innerHTML = '';
+    const q = modelQuery.trim();
+    const items = MODEL_CATALOG.filter((m) => {
+      if (!matches(m, q)) return false;
+      if (modelFilter === 'Empfohlen') return m.stars >= 4;
+      if (modelFilter === 'Installiert') return isInstalled(m.name);
+      if (modelFilter === 'Kann Bilder') return !!m.vision;
+      if (modelFilter === 'Klein (< 2 GB)') return m.gb < 2;
+      return true;
+    });
+    if (!items.length) { list.appendChild(el('div', 'empty', 'Nichts gefunden für „' + esc(q) + '".')); return; }
+    items.forEach((m) => {
+      const card = modelCard(m.name, { installed: isInstalled(m.name), sizeGb: m.gb });
+      // Treffer im Namen hervorheben
+      if (q) {
+        const nameEl = card.querySelector('.model-name');
+        if (nameEl) nameEl.innerHTML = nameEl.innerHTML.replace(esc(m.name), highlight(m.name, q));
+      }
+      list.appendChild(card);
+    });
+  }
+  draw();
+  modalShell('🛒 Modelle', body, true);
+  setTimeout(() => inp.focus(), 60);
+}
+
+// ============================================================
+//  Modell-Download: Zustand lebt in activePulls, Anzeige im schwebenden Panel
+// ============================================================
+async function pullModel(name) {
+  if (activePulls.get(name) && !activePulls.get(name).done) return; // läuft schon
+  activePulls.set(name, { pct: 0, status: 'Starte Download…', done: false });
+  pullPanelOpen = true;
+  renderPullPanel();
+  try {
+    const res = await fetch('/api/ai/pull', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }),
+    });
+    if (!res.ok) {
+      let msg = 'Download fehlgeschlagen';
+      try { msg = (await res.json()).error || msg; } catch { /* kein JSON */ }
+      throw new Error(msg);
+    }
     const reader = res.body.getReader();
     const dec = new TextDecoder();
     let buf = '';
@@ -670,26 +1080,96 @@ async function pullModel(name, btn, prog, progText) {
       const lines = buf.split('\n'); buf = lines.pop();
       for (const line of lines) {
         if (!line.trim()) continue;
-        try {
-          const d = JSON.parse(line);
-          if (d.total && d.completed != null) {
-            const pct = Math.round((d.completed / d.total) * 100);
-            prog.firstChild.style.width = pct + '%';
-            progText.textContent = (d.status || 'lädt') + ' · ' + pct + '% (' + (d.completed / 1e9).toFixed(1) + ' / ' + (d.total / 1e9).toFixed(1) + ' GB)';
-          } else if (d.status) progText.textContent = d.status;
-          if (d.error) throw new Error(d.error);
-        } catch (e) { if (e instanceof SyntaxError) continue; throw e; }
+        let d;
+        try { d = JSON.parse(line); } catch { continue; }
+        if (d.error) throw new Error(d.error);
+        const cur = activePulls.get(name) || {};
+        if (d.total && d.completed != null) {
+          cur.pct = Math.round((d.completed / d.total) * 100);
+          cur.status = (d.status || 'lädt') + ' · ' + (d.completed / 1e9).toFixed(1) + ' / ' + (d.total / 1e9).toFixed(1) + ' GB';
+        } else if (d.status) {
+          cur.status = d.status;
+        }
+        activePulls.set(name, cur);
+        renderPullPanel();
       }
     }
-    prog.firstChild.style.width = '100%';
-    progText.textContent = '✅ Fertig!';
-    toast('Modell „' + name + '“ installiert.');
-    setTimeout(() => render(), 900);
+    const cur = activePulls.get(name) || {};
+    cur.pct = 100; cur.status = 'Fertig'; cur.done = true; cur.doneAt = Date.now();
+    activePulls.set(name, cur);
+    toast('Modell „' + name + '" installiert.');
+    aiCache.info = {};
+    renderPullPanel();
+    // Nur die Seite neu zeichnen — laufende Downloads bleiben davon unberührt,
+    // weil ihr Zustand nicht mehr im DOM hängt.
+    if (STATE.tab === 'ai') render();
   } catch (e) {
-    progText.textContent = '❌ ' + e.message;
-    btn.disabled = false; btn.textContent = '⬇ Herunterladen';
+    const cur = activePulls.get(name) || {};
+    cur.done = true; cur.error = e.message; cur.status = e.message; cur.doneAt = Date.now();
+    activePulls.set(name, cur);
+    renderPullPanel();
     toast('Download fehlgeschlagen: ' + e.message, true);
   }
+}
+
+/* Das Panel hängt außerhalb von #view und wird von render() nie gelöscht. */
+function renderPullPanel() {
+  const host = $('pullPanel');
+  if (!host) return;
+  const entries = [...activePulls.entries()].filter(([, p]) => !p.done || Date.now() - (p.doneAt || 0) < 20000);
+  if (!entries.length) { host.style.display = 'none'; host.innerHTML = ''; return; }
+  host.style.display = 'block';
+  host.innerHTML = '';
+
+  const head = el('div', 'pp-head');
+  const running = entries.filter(([, p]) => !p.done).length;
+  head.innerHTML = `<b>⬇ Downloads</b> <span class="hint">${running ? running + ' läuft' : 'fertig'}</span>`;
+  const toggle = el('button', 'dot-btn', pullPanelOpen ? '▾' : '▴');
+  toggle.onclick = () => { pullPanelOpen = !pullPanelOpen; renderPullPanel(); };
+  head.appendChild(toggle);
+  host.appendChild(head);
+
+  if (!pullPanelOpen) return;
+  entries.forEach(([name, p]) => {
+    const row = el('div', 'pp-row');
+    row.appendChild(el('div', 'pp-name', esc(name)));
+    const bar = el('div', 'progress');
+    const fill = el('div'); fill.style.width = (p.pct || 0) + '%';
+    if (p.error) fill.style.background = 'var(--red, #dc2626)';
+    bar.appendChild(fill);
+    row.appendChild(bar);
+    row.appendChild(el('div', 'pp-status' + (p.error ? ' err' : ''), (p.error ? '❌ ' : p.done ? '✅ ' : '') + esc(p.status || '')));
+    if (p.done) {
+      const x = el('button', 'dot-btn', '✕');
+      x.onclick = () => { activePulls.delete(name); renderPullPanel(); };
+      row.appendChild(x);
+    }
+    host.appendChild(row);
+  });
+}
+
+/* ---- Bild verkleinern (Browser) ----
+   Ohne das landen 4-MB-Fotos als ~5,3 MB Base64 im Request und der Server
+   antwortet mit HTTP 413. 1024 px Kantenlänge reichen jedem Vision-Modell. */
+function shrinkImageFile(file, maxPx) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+      const w = Math.max(1, Math.round(img.width * scale));
+      const h = Math.max(1, Math.round(img.height * scale));
+      const cv = document.createElement('canvas');
+      cv.width = w; cv.height = h;
+      cv.getContext('2d').drawImage(img, 0, 0, w, h);
+      const dataUrl = cv.toDataURL('image/jpeg', 0.7);
+      const base64 = dataUrl.split(',')[1] || '';
+      resolve({ base64, dataUrl, w, h, bytes: Math.round(base64.length * 0.75) });
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Kein gültiges Bild')); };
+    img.src = url;
+  });
 }
 
 // ============================================================
@@ -768,8 +1248,18 @@ function renderSettings(v) {
         sel.onchange = () => saveSetting(s.key, sel.value);
         ctrl.appendChild(sel);
       } else if (s.type === 'number') {
-        const n = el('input', 'input slim'); n.type = 'number'; n.min = s.min; n.max = s.max; n.value = val != null ? val : '';
-        n.onchange = () => saveSetting(s.key, Math.max(s.min, Math.min(s.max, parseInt(n.value, 10) || 0)));
+        const n = el('input', 'input slim'); n.type = 'number'; n.min = s.min; n.max = s.max;
+        if (s.step) n.step = s.step;
+        n.value = val != null ? val : '';
+        n.onchange = () => {
+          // Kommazahlen (temperature, top_p, repeat_penalty) würden mit parseInt
+          // auf 0 bzw. 1 zusammenfallen — deshalb je nach `step` parsen.
+          const raw = s.step ? parseFloat(n.value) : parseInt(n.value, 10);
+          const num = Number.isFinite(raw) ? raw : s.min;
+          const clamped = Math.max(s.min, Math.min(s.max, num));
+          n.value = clamped;
+          saveSetting(s.key, clamped);
+        };
         ctrl.appendChild(n);
       } else if (s.type === 'text') {
         const t = el('input', 'input'); t.style.width = '220px'; t.placeholder = s.placeholder || ''; t.value = val || '';

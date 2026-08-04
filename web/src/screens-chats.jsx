@@ -4,7 +4,7 @@
 import React from 'react';
 import { VNIcon, Switch, toast } from './components.jsx';
 import { CHAT_ROLES } from './data.js';
-import { aiChat, vetSystemPrompt, toAiMessages } from './lib/ai.js';
+import { aiChat, vetSystemPrompt, toAiMessages, shrinkImage } from './lib/ai.js';
 import { botConversationReply, botGreetingText, botImageReply } from './bot.js';
 import { useChats } from './lib/chats.jsx';
 import { useAdmin } from './lib/adminContext.jsx';
@@ -250,9 +250,11 @@ function Reactions({ m, mine }) {
 /* Zeitzeile: Uhrzeit + optional „(bearbeitet)" + Herkunft der Antwort.
    `source` ist optional — alte Nachrichten zeigen wie bisher nur die Zeit. */
 function messageStamp(m) {
-  return m.time
-    + (m.editedAt ? ' · (bearbeitet)' : '')
-    + (m.source === 'ai' ? ' · KI' : m.source === 'bot' ? ' · Bot' : '');
+  const src = m.source === 'ai-vision' ? ' · KI · Bild'
+    : m.source === 'ai' ? ' · KI'
+      : m.source === 'bot' ? ' · Bot'
+        : m.source === 'error' ? ' · Hinweis' : '';
+  return m.time + (m.editedAt ? ' · (bearbeitet)' : '') + src;
 }
 
 /* ---------- Thread ---------- */
@@ -321,12 +323,22 @@ function ChatThread({ chat, onBack, addMessage, labels, settings }) {
         const history = isGreeting
           ? [sys, { role: 'user', content: '(Der Chat wurde gerade geöffnet — begrüße kurz und freundlich.)' }]
           : [sys, ...toAiMessages(msgs, other, null)];
-        const text = await aiChat({ messages: history, model: settings.aiModel, aiBaseUrl: settings.aiBaseUrl });
+        const r = await aiChat({ messages: history, model: settings.aiModel, aiBaseUrl: settings.aiBaseUrl });
         if (!alive) return;
         setTyping(false);
-        addMessage(chat.id, { from: other, text, time: 'jetzt', source: 'ai' });
-      } catch {
+        addMessage(chat.id, { from: other, text: r.text, time: 'jetzt', source: r.vision ? 'ai-vision' : 'ai', aiModel: r.model });
+      } catch (err) {
         if (!alive) return;
+        /* Unterscheiden statt alles verschlucken: Ist die KI schlicht nicht
+           erreichbar, übernimmt der Bot still (gut für die Vorführung).
+           Ist aber das BILD das Problem, muss das sichtbar sein — sonst sieht
+           man eine plausible Bot-Antwort und erfährt nie, dass das Foto nie
+           angekommen ist. */
+        if (err && err.visible) {
+          setTyping(false);
+          addMessage(chat.id, { from: other, text: '⚠️ ' + err.message, time: 'jetzt', source: 'error' });
+          return;
+        }
         let texts;
         if (isGreeting) texts = [botGreetingText(other, practiceName)];
         else if (last && last.type === 'image') texts = [botImageReply(other)];
@@ -356,13 +368,25 @@ function ChatThread({ chat, onBack, addMessage, labels, settings }) {
   /* Anhänge landen als Base64 im localStorage. Ohne Obergrenze sprengt schon
      ein PDF oder Video das Kontingent — und dann wären ALLE Chats weg. */
   const MAX_BYTES = 4 * 1024 * 1024;
-  const onPickFile = (e) => {
+  const onPickFile = async (e) => {
     const file = e.target.files && e.target.files[0]; e.target.value = '';
     if (!file) return;
+    /* Bilder werden VOR dem Speichern auf 1024 px heruntergerechnet — das spart
+       Speicher UND ist die Voraussetzung dafür, dass sie an die KI gehen können
+       (ein 4-MB-Foto wäre als Base64 ~5,3 MB und liefe in ein HTTP 413). */
+    if (file.type && file.type.startsWith('image/')) {
+      try {
+        const img = await shrinkImage(file, 1024, 0.7);
+        setPendingImg(img.dataUrl);
+        toast(`Bild bereit (${img.w}×${img.h}).`, 'info');
+      } catch {
+        toast('Bild konnte nicht gelesen werden.', 'error');
+      }
+      return;
+    }
     if (file.size > MAX_BYTES) { toast('Datei zu groß (max. 4 MB) — bitte kleinere Datei wählen.', 'error'); return; }
     const reader = new FileReader();
     reader.onload = () => {
-      if (file.type && file.type.startsWith('image/')) { setPendingImg(reader.result); toast('Bild bereit zum Senden.', 'info'); return; }
       addMessage(chat.id, { from: me, type: 'file', src: reader.result, fileName: file.name, fileMime: file.type || '', text: '', time: 'jetzt' });
       toast('Datei gesendet.', 'success');
     };

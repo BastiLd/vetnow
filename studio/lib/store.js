@@ -22,13 +22,26 @@ const SETTINGS_DEFAULT = {
   logLines: 400,              // maximale Log-Zeilen pro App
   autoOpenLogs: true,         // Logs automatisch öffnen bei Build/Start
   confirmDelete: true,        // Löschen bestätigen
-  // KI / Ollama
+  // KI / Ollama — Vordergrund (Text)
   ollamaUrl: '',              // leer = OLLAMA_URL-Env bzw. http://HOST_IP:11434
-  ollamaModel: 'qwen2.5:3b',  // Standard für /api/ai/chat — gutes Deutsch bei ~3 GB RAM.
-                              // qwen2.5:7b ist klüger, braucht aber ~8 GB allein für Ollama;
-                              // auf einem 8-GB-Server bleibt dafür kaum Luft. Im KI-Tab
-                              // beide testen und mit „⭐ Als Standard nutzen" umschalten.
-  aiTimeoutSec: 60,           // Timeout für KI-Antworten
+  ollamaModel: 'qwen2.5:7b',  // Vordergrund-Modell für /api/ai/chat (Text).
+                              // Der Server hat 15,3 GB RAM — die Runde-2-Annahme
+                              // „≤ 8 GB" war falsch, 7b ist hier die richtige Wahl.
+  // KI / Ollama — Hintergrund (Bilder)
+  ollamaVisionModel: '',      // leer = kein Vision-Modell. Wird automatisch statt
+                              // ollamaModel benutzt, sobald eine Nachricht ein Bild
+                              // enthält (siehe aiAutoVision).
+  aiAutoVision: true,         // automatisch aufs Vision-Modell umschalten
+  aiTimeoutSec: 60,           // Zeitlimit für normale Text-Antworten (Sekunden)
+  aiVisionTimeoutSec: 180,    // Zeitlimit für Antworten MIT Bild — auf der CPU
+                              // braucht ein Vision-Modell leicht 20-40 s, bei
+                              // größeren Modellen deutlich mehr.
+  aiMaxImagePx: 1024,         // längste Bildkante, bevor das Bild gesendet wird
+  // Feineinstellungen des Modells (waren bisher in den Apps fest verdrahtet)
+  aiTemperature: 0.4,
+  aiTopP: 0.9,
+  aiNumCtx: 4096,
+  aiRepeatPenalty: 1.15,
   // Updates
   updateCheckMin: 60,         // Minuten zwischen Update-Checks (0 = aus)
   autoUpdateOnStart: true,    // (Info) Container zieht bei jedem Start das neueste Repo

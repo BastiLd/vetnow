@@ -9,6 +9,15 @@
 import { NativeModules } from 'react-native';
 
 const DEFAULT_TIMEOUT = 45000;
+/* Bilder brauchen deutlich länger: ein Vision-Modell auf der CPU liegt leicht
+   bei 20-60 s. Mit 45 s bricht die App ab, bevor überhaupt etwas zurückkommt. */
+const VISION_TIMEOUT = 120000;
+
+/* Ein Fehler, den die App dem Nutzer ZEIGEN soll (z. B. „Bild zu groß"),
+   statt still auf den Bot zurückzufallen. */
+export class AiVisibleError extends Error {
+  constructor(msg) { super(msg); this.name = 'AiVisibleError'; this.visible = true; }
+}
 
 /* Host des Metro-Bundlers (= der Studio-Server) aus der Bundle-URL ziehen.
    Funktioniert in Expo Go / Dev-Builds; im Release-APK ist die URL file:// */
@@ -34,7 +43,16 @@ async function fetchJson(url, opts = {}, timeout = DEFAULT_TIMEOUT) {
   const t = setTimeout(() => ctrl.abort(), timeout);
   try {
     const res = await fetch(url, { ...opts, signal: ctrl.signal });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
+    if (!res.ok) {
+      /* Der Studio-Proxy liefert bei bekannten Problemen eine verständliche
+         deutsche Meldung mit — die wollen wir nicht wegwerfen. */
+      let detail = ''; let code = '';
+      try { const j = await res.json(); detail = j.error || ''; code = j.code || ''; } catch { /* kein JSON */ }
+      const err = new Error(detail || 'HTTP ' + res.status);
+      err.httpStatus = res.status;
+      err.code = code; // 'offline' | 'no-vision' | 'model-crash' | …
+      throw err;
+    }
     return await res.json();
   } finally {
     clearTimeout(t);
@@ -48,14 +66,30 @@ export const AI_OPTIONS = { temperature: 0.4, top_p: 0.9, num_ctx: 4096, repeat_
 export async function aiChat({ messages, model, aiBaseUrl }) {
   const base = aiBase(aiBaseUrl);
   if (!base) throw new Error('keine KI-URL');
-  const d = await fetchJson(base + '/chat', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model, messages, options: AI_OPTIONS }),
-  });
+  const hasImage = (messages || []).some((m) => Array.isArray(m.images) && m.images.length);
+  let d;
+  try {
+    d = await fetchJson(base + '/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model, messages }),
+    }, hasImage ? VISION_TIMEOUT : DEFAULT_TIMEOUT);
+  } catch (e) {
+    /* Bei einer Bildanfrage darf ein Fehler NICHT still zum Bot führen — sonst
+       sieht man eine plausible Antwort und erfährt nie, dass das Foto nie
+       angekommen ist. Genau diese Falle hat diese Runde ausgelöst.
+       ABER: Der Code 'offline' heißt schlicht „keine KI da". Dann übernimmt
+       weiterhin STILL der Bot, damit eine Vorführung ohne Netz sauber bleibt. */
+    const s = e && e.httpStatus;
+    if (s === 413) throw new AiVisibleError('Das Bild war zu groß für den Server. Bitte ein kleineres Foto senden.');
+    if (hasImage && s === 400) throw new AiVisibleError(e.message || 'Für Bilder ist kein Bild-Modell hinterlegt (Studio → KI → Hintergrund-Modell).');
+    if (hasImage && s === 502 && e.code && e.code !== 'offline') throw new AiVisibleError(e.message || 'Das Bild-Modell konnte nicht antworten.');
+    throw e;
+  }
   const text = d && d.message && d.message.content ? String(d.message.content).trim() : '';
   if (!text) throw new Error('leere Antwort');
-  return text;
+  // vnModel/vnVision setzt der Studio-Proxy — damit weiß die App, WER geantwortet hat.
+  return { text, model: d.vnModel || model || '', vision: !!d.vnVision };
 }
 
 /* System-Prompt für den Praxis-Bot — "Training" per Regeln + Beispiel-Dialogen.
@@ -96,13 +130,31 @@ Du: „Das kann ein Notfall sein — rufen Sie uns bitte SOFORT an, damit wir di
 export function toAiMessages(messages, fromRole, userText, limit = 10) {
   const out = [];
   const recent = messages.slice(-limit);
-  for (const m of recent) {
-    if (m.deleted) continue; // gelöschte Nachrichten nie an die KI schicken
-    if (m.type === 'file') { out.push({ role: m.from === fromRole ? 'assistant' : 'user', content: '[Datei gesendet: ' + (m.fileName || 'Anhang') + ']' + (m.text ? ' ' + m.text : '') }); continue; }
-    if (m.type === 'note') { out.push({ role: 'assistant', content: '[Abschlussnotiz] ' + (m.text || '') }); continue; }
-    if (m.type === 'image') { out.push({ role: m.from === fromRole ? 'assistant' : 'user', content: '[Bild gesendet]' + (m.text ? ' ' + m.text : '') }); continue; }
-    out.push({ role: m.from === fromRole ? 'assistant' : 'user', content: m.text || '' });
+  /* Nur das LETZTE Bild wirklich mitschicken. Alle Bilder der letzten zehn
+     Nachrichten anzuhängen sprengt den Request und treibt die Antwortzeit
+     ins Absurde. Ältere Bilder bleiben als Textmarke im Verlauf.
+     `srcB64` füllt der Bild-Picker (siehe ChatThreadScreen) — `src` ist auf
+     dem Handy nur ein Dateipfad und enthält KEINE Bilddaten. */
+  let lastImageIdx = -1;
+  for (let i = recent.length - 1; i >= 0; i--) {
+    const m = recent[i];
+    if (!m.deleted && m.type === 'image' && m.srcB64) { lastImageIdx = i; break; }
   }
+
+  recent.forEach((m, i) => {
+    if (m.deleted) return; // gelöschte Nachrichten nie an die KI schicken
+    const role = m.from === fromRole ? 'assistant' : 'user';
+    if (m.type === 'file') { out.push({ role, content: '[Datei gesendet: ' + (m.fileName || 'Anhang') + ']' + (m.text ? ' ' + m.text : '') }); return; }
+    if (m.type === 'note') { out.push({ role: 'assistant', content: '[Abschlussnotiz] ' + (m.text || '') }); return; }
+    if (m.type === 'image') {
+      const b64 = i === lastImageIdx ? m.srcB64 : '';
+      const msg = { role, content: m.text || (b64 ? 'Bitte sieh dir dieses Bild an.' : '[Bild gesendet]') };
+      if (b64) msg.images = [b64];
+      out.push(msg);
+      return;
+    }
+    out.push({ role, content: m.text || '' });
+  });
   if (userText != null) out.push({ role: 'user', content: userText });
   return out;
 }

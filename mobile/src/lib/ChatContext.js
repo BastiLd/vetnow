@@ -70,7 +70,7 @@ export function ChatProvider({ children }) {
      als Datenmüll im Speicher liegen. */
   const deleteMessage = (id, idx) => patchMessage(id, idx, (m) => {
     const next = { ...m, deleted: true, deletedAt: Date.now(), text: '' };
-    delete next.src; delete next.fileName; delete next.fileMime; delete next.reactions;
+    delete next.src; delete next.srcB64; delete next.fileName; delete next.fileMime; delete next.reactions;
     return next;
   });
   const toggleReaction = (id, idx, side, emoji) => patchMessage(id, idx, (m) => {

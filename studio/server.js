@@ -50,7 +50,11 @@ function gitInfo() {
 }
 
 const app = express();
-app.use(express.json({ limit: '2mb' }));
+/* 8 MB statt 2 MB: Chat-Anfragen MIT Bild tragen das Foto als Base64 im Body.
+   Die Apps rechnen Bilder vorher auf ~1024 px herunter (typisch 150-400 KB),
+   das Limit ist der Sicherheitspuffer für Bild + Gesprächsverlauf + Prompt.
+   Mit 2 MB endete jede Bildanfrage in einem HTTP 413. */
+app.use(express.json({ limit: '8mb' }));
 
 // ---------- Web-Vorschau: statisch aus dem dist-Ordner je App (basePath) ----------
 app.use((req, res, next) => {
@@ -304,6 +308,50 @@ app.post('/api/apps/:id/action', async (req, res) => {
 });
 
 // ---------- KI / Ollama-Proxy ----------
+
+/* Ollama-Rohfehler in verständliches Deutsch übersetzen.
+   Ohne das steht im Studio z. B. wörtlich „llama runner process has terminated
+   with exit code -1" — technisch korrekt und für niemanden hilfreich. */
+const AI_ERROR_MAP = [
+  [/exit code -1|runner process has terminated|llm server not responding/i,
+    'Das Modell konnte nicht geladen werden. Häufigste Ursache: Es passt nicht auf die Grafikkarte. '
+    + 'Tipp: Ollama auf reinen CPU-Betrieb stellen (Umgebungsvariable OLLAMA_NUM_GPU=0 bzw. CUDA_VISIBLE_DEVICES="") und die Ollama-App neu starten.'],
+  [/out of memory|cuda error|insufficient memory|failed to allocate/i,
+    'Zu wenig Speicher für dieses Modell. Entweder ein kleineres Modell wählen oder Ollama auf CPU-Betrieb stellen (OLLAMA_NUM_GPU=0).'],
+  [/does not support (images|vision)|image input is not supported|unable to process image/i,
+    'Dieses Modell kann keine Bilder verarbeiten. Im Studio unter KI ein Vision-Modell installieren und als Hintergrund-Modell setzen.'],
+  [/does not support tools/i, 'Dieses Modell unterstützt keine Werkzeuge (Tools).'],
+  [/model .* not found|no such model|pull the model/i,
+    'Dieses Modell ist auf dem Server nicht installiert. Im KI-Tab herunterladen.'],
+  [/context length|too many tokens|exceeds context/i,
+    'Die Anfrage ist zu lang für das Kontextfenster des Modells. Entweder weniger Verlauf mitschicken oder num_ctx erhöhen (Einstellungen → KI).'],
+  [/aborted|abort|timeout|timed out/i,
+    'Zeitlimit überschritten — das Modell hat nicht rechtzeitig geantwortet. Bei Bildern auf der CPU ist das normal: Zeitlimit erhöhen (Einstellungen → KI) oder ein kleineres Modell wählen.'],
+  [/ECONNREFUSED|fetch failed|ENOTFOUND|EHOSTUNREACH|not reachable/i,
+    'Ollama ist nicht erreichbar. Läuft der Ollama-Dienst auf dem Server (Standard-Port 11434)? Adresse prüfen unter Einstellungen → KI.'],
+  [/413|too large|payload/i,
+    'Die Anfrage war zu groß (meist ein zu großes Bild). Das Bild wird eigentlich automatisch verkleinert — bitte im Studio unter Einstellungen → KI die maximale Bildkante prüfen.'],
+];
+
+function aiErrorText(err) {
+  const raw = typeof err === 'string' ? err : (err && err.message) || String(err || '');
+  for (const [rx, msg] of AI_ERROR_MAP) if (rx.test(raw)) return msg;
+  return raw ? 'Unerwarteter KI-Fehler: ' + raw.slice(0, 200) : 'Unbekannter KI-Fehler.';
+}
+
+/* Maschinenlesbare Einordnung — die Apps müssen unterscheiden können:
+   `offline` = KI schlicht nicht da → der eingebaute Bot übernimmt STILL
+               (so muss sich eine Vorführung ohne Netz weiterhin verhalten).
+   alles andere = echtes Problem mit Modell oder Bild → sichtbarer Hinweis. */
+function aiErrorCode(err) {
+  const raw = typeof err === 'string' ? err : (err && err.message) || String(err || '');
+  if (/ECONNREFUSED|fetch failed|ENOTFOUND|EHOSTUNREACH|not reachable|aborted|abort|timeout|timed out/i.test(raw)) return 'offline';
+  if (/does not support (images|vision)|image input is not supported|unable to process image/i.test(raw)) return 'no-vision';
+  if (/exit code -1|runner process has terminated|out of memory|cuda error|insufficient memory/i.test(raw)) return 'model-crash';
+  if (/model .* not found|no such model/i.test(raw)) return 'model-missing';
+  return 'other';
+}
+
 async function ollamaFetch(pathname, opts = {}, timeoutMs = 10000) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -315,12 +363,16 @@ async function ollamaFetch(pathname, opts = {}, timeoutMs = 10000) {
 }
 
 app.get('/api/ai/status', async (req, res) => {
+  const s = store.readSettings();
   try {
     const r = await ollamaFetch('/api/version', {}, 4000);
     const v = await r.json();
-    res.json({ ok: true, ollama: 'Ollama ' + (v.version || ''), url: ollamaUrl(), defaultModel: store.readSettings().ollamaModel });
-  } catch {
-    res.json({ ok: false, url: ollamaUrl(), hint: 'Ollama nicht erreichbar — läuft es auf dem Server? (Standard-Port 11434)' });
+    res.json({
+      ok: true, ollama: 'Ollama ' + (v.version || ''), url: ollamaUrl(),
+      defaultModel: s.ollamaModel, visionModel: s.ollamaVisionModel, autoVision: s.aiAutoVision !== false,
+    });
+  } catch (e) {
+    res.json({ ok: false, url: ollamaUrl(), hint: aiErrorText(e) });
   }
 });
 
@@ -331,10 +383,79 @@ app.get('/api/ai/models', async (req, res) => {
     const models = (d.models || []).map((m) => ({
       name: m.name, sizeGb: m.size ? +(m.size / 1e9).toFixed(1) : null,
       family: m.details && m.details.family, params: m.details && m.details.parameter_size,
+      // Diese drei kamen bisher an und wurden weggeworfen:
+      quant: m.details && m.details.quantization_level,
+      families: (m.details && m.details.families) || [],
+      modifiedAt: m.modified_at || null,
     }));
-    res.json({ models, defaultModel: store.readSettings().ollamaModel });
+    const s = store.readSettings();
+    res.json({ models, defaultModel: s.ollamaModel, visionModel: s.ollamaVisionModel });
   } catch {
     res.status(502).json({ error: 'Ollama nicht erreichbar', models: [] });
+  }
+});
+
+/* Detail-Infos zu EINEM Modell (Ollama /api/show). Liefert u. a. `capabilities`
+   — daraus ergibt sich automatisch, ob ein Modell Bilder versteht; das war
+   bisher im Frontend hartkodiert. Ergebnis wird gecacht, weil /api/show je
+   Aufruf spürbar dauert und sich der Inhalt nur beim Neuinstallieren ändert. */
+const showCache = new Map(); // name -> { at, data }
+const SHOW_TTL_MS = 10 * 60 * 1000;
+
+async function modelInfo(name) {
+  const hit = showCache.get(name);
+  if (hit && Date.now() - hit.at < SHOW_TTL_MS) return hit.data;
+  const r = await ollamaFetch('/api/show', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: name }),
+  }, 15000);
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  const d = await r.json();
+  const det = d.details || {};
+  const info = d.model_info || {};
+  const ctxKey = Object.keys(info).find((k) => k.endsWith('.context_length'));
+  const data = {
+    name,
+    capabilities: d.capabilities || [],
+    vision: (d.capabilities || []).includes('vision'),
+    tools: (d.capabilities || []).includes('tools'),
+    params: det.parameter_size || null,
+    quant: det.quantization_level || null,
+    family: det.family || null,
+    families: det.families || [],
+    contextLength: ctxKey ? info[ctxKey] : null,
+    license: (d.license || '').split('\n')[0].slice(0, 120) || null,
+  };
+  showCache.set(name, { at: Date.now(), data });
+  return data;
+}
+
+app.get('/api/ai/model/:name', async (req, res) => {
+  try {
+    res.json(await modelInfo(req.params.name));
+  } catch (e) {
+    res.status(502).json({ error: aiErrorText(e), name: req.params.name, capabilities: [] });
+  }
+});
+
+/* Welche Modelle sind gerade tatsächlich GELADEN (Ollama /api/ps)?
+   Damit zeigt das Studio, was wirklich im Speicher liegt statt nur, was
+   konfiguriert ist. */
+app.get('/api/ai/running', async (req, res) => {
+  try {
+    const r = await ollamaFetch('/api/ps', {}, 6000);
+    const d = await r.json();
+    res.json({
+      running: (d.models || []).map((m) => ({
+        name: m.name,
+        sizeGb: m.size ? +(m.size / 1e9).toFixed(1) : null,
+        vramGb: m.size_vram ? +(m.size_vram / 1e9).toFixed(1) : 0,
+        onGpu: !!(m.size_vram && m.size && m.size_vram > m.size * 0.5),
+        expiresAt: m.expires_at || null,
+      })),
+    });
+  } catch {
+    res.json({ running: [], error: 'Ollama nicht erreichbar' });
   }
 });
 
@@ -342,21 +463,42 @@ app.get('/api/ai/models', async (req, res) => {
 app.post('/api/ai/pull', async (req, res) => {
   const name = (req.body && req.body.name || '').trim();
   if (!name) return res.status(400).json({ error: 'Modellname fehlt' });
+  let started = false;   // ab hier sind die Header raus — kein res.status() mehr!
+  let clientGone = false;
+  res.on('close', () => { clientGone = true; });
   try {
     const r = await ollamaFetch('/api/pull', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, stream: true }),
     }, 3600000);
+    if (!r.ok) {
+      const t = await r.text();
+      return res.status(502).json({ error: aiErrorText(t) });
+    }
     res.setHeader('Content-Type', 'application/x-ndjson');
+    res.setHeader('Cache-Control', 'no-cache');
+    started = true;
     const reader = r.body.getReader();
     for (;;) {
+      // Ohne diese Prüfung pumpt der Server weiter, wenn der Browser weg ist —
+      // der Download lief dann bis zum Ende ins Leere.
+      if (clientGone) { try { await reader.cancel(); } catch { /* egal */ } break; }
       const { done, value } = await reader.read();
       if (done) break;
-      res.write(Buffer.from(value));
+      if (!res.write(Buffer.from(value))) {
+        await new Promise((ok) => res.once('drain', ok));
+      }
     }
     res.end();
-  } catch {
-    res.status(502).json({ error: 'Download fehlgeschlagen — ist Ollama erreichbar?' });
+  } catch (e) {
+    // Nach begonnenem Stream wirft res.status() ERR_HTTP_HEADERS_SENT — dann
+    // den Fehler als letzte NDJSON-Zeile mitgeben, damit ihn das Studio sieht.
+    if (started) {
+      try { res.write(JSON.stringify({ error: aiErrorText(e) }) + '\n'); } catch { /* egal */ }
+      try { res.end(); } catch { /* egal */ }
+    } else {
+      res.status(502).json({ error: aiErrorText(e) });
+    }
   }
 });
 
@@ -374,23 +516,56 @@ app.delete('/api/ai/models/:name', async (req, res) => {
 
 app.post('/api/ai/chat', async (req, res) => {
   const s = store.readSettings();
-  const model = (req.body && req.body.model) || s.ollamaModel;
   const messages = (req.body && req.body.messages) || [];
-  const options = (req.body && req.body.options) || undefined; // z. B. temperature/num_ctx aus der App
   const format = (req.body && req.body.format) || undefined;   // 'json' = Ollama antwortet als reines JSON
-  if (!model) return res.status(400).json({ error: 'Kein Modell konfiguriert (Studio → KI)' });
+
+  /* Automatisches Umschalten Vordergrund → Hintergrund:
+     Sobald irgendeine Nachricht Bilddaten trägt und ein Vision-Modell
+     konfiguriert ist, antwortet dieses statt des Textmodells. */
+  const hasImage = messages.some((m) => Array.isArray(m.images) && m.images.length > 0);
+  const wantVision = hasImage && s.aiAutoVision !== false && !!s.ollamaVisionModel;
+  const model = (req.body && req.body.model) || (wantVision ? s.ollamaVisionModel : s.ollamaModel);
+
+  if (!model) {
+    return res.status(400).json({
+      error: hasImage
+        ? 'Kein Bild-Modell konfiguriert. Im Studio unter KI ein Vision-Modell installieren und als Hintergrund-Modell setzen.'
+        : 'Kein Modell konfiguriert (Studio → KI)',
+      code: hasImage ? 'no-vision-model' : 'no-model',
+    });
+  }
+  if (hasImage && !wantVision && !(req.body && req.body.model)) {
+    // Bild da, aber kein Vision-Modell hinterlegt → das Textmodell würde das
+    // Bild stumm ignorieren. Lieber ehrlich sagen als so tun, als ginge es.
+    return res.status(400).json({
+      error: 'Es wurde ein Bild mitgeschickt, aber es ist kein Bild-Modell hinterlegt. Studio → KI → Hintergrund-Modell setzen.',
+      code: 'no-vision-model',
+    });
+  }
+
+  /* Feineinstellungen kommen jetzt aus den Studio-Einstellungen; was die App
+     mitschickt, hat weiterhin Vorrang (Rückwärtskompatibilität). */
+  const options = {
+    temperature: s.aiTemperature, top_p: s.aiTopP,
+    num_ctx: s.aiNumCtx, repeat_penalty: s.aiRepeatPenalty,
+    ...((req.body && req.body.options) || {}),
+  };
+  const timeoutMs = (hasImage ? (s.aiVisionTimeoutSec || 180) : (s.aiTimeoutSec || 60)) * 1000;
+
   try {
     const r = await ollamaFetch('/api/chat', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model, messages, stream: false, ...(options ? { options } : {}), ...(format ? { format } : {}) }),
-    }, (s.aiTimeoutSec || 60) * 1000);
+      body: JSON.stringify({ model, messages, stream: false, options, ...(format ? { format } : {}) }),
+    }, timeoutMs);
     if (!r.ok) {
       const err = await r.text();
-      return res.status(502).json({ error: 'Ollama-Fehler: ' + err.slice(0, 300) });
+      return res.status(502).json({ error: aiErrorText(err), code: aiErrorCode(err), raw: err.slice(0, 300), model, usedVision: wantVision });
     }
-    res.json(await r.json());
-  } catch {
-    res.status(502).json({ error: 'KI-Antwort fehlgeschlagen (Timeout oder Ollama offline)' });
+    const out = await r.json();
+    // Die Apps zeigen klein an, WELCHES Modell geantwortet hat (· KI bzw. · KI · Bild).
+    res.json({ ...out, vnModel: model, vnVision: wantVision });
+  } catch (e) {
+    res.status(502).json({ error: aiErrorText(e), code: aiErrorCode(e), model, usedVision: wantVision });
   }
 });
 

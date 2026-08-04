@@ -57,10 +57,11 @@ Antworte NUR mit JSON in exakt dieser Form: {"steps":[{"say":"...","act":"..."}]
 ${actList}
 Wähle die Schritte PASSEND ZUR AUFGABE — nicht immer dieselben. Der letzte Schritt hat act "home". Alles auf Deutsch.`;
   const user = 'AUFGABE: ' + task + '\n\nFAKTEN (echte App-Daten): ' + JSON.stringify(facts);
-  const raw = await aiChat({
+  const res = await aiChat({
     model: settings.aiModel, aiBaseUrl: settings.aiBaseUrl, format: 'json',
     messages: [{ role: 'system', content: sys }, { role: 'user', content: user }],
   });
+  const raw = res && res.text ? res.text : res;
   let data;
   try { data = JSON.parse(String(raw).replace(/```json|```/g, '').trim()); }
   catch { throw new Error('KI-Plan war kein gültiges JSON'); }
@@ -198,7 +199,8 @@ export function AgentPanel() {
           { role: 'user', content: 'Aufgabe: ' + theTask + '\nFakten:\n' + rep },
         ],
       });
-      if (ai) rep = '📋 AGENT-BERICHT (KI)\n\n' + ai;
+      const aiText = ai && ai.text ? ai.text : ai;
+      if (aiText) rep = '📋 AGENT-BERICHT (KI)\n\n' + aiText;
     } catch { addLog('⚠️ KI nicht erreichbar — nutze eingebauten Berichts-Text.'); }
     setReport(rep);
     setRunning(false);
