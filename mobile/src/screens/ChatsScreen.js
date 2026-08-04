@@ -8,6 +8,13 @@ import { Card, SectionLabel, Btn, Field, Input, H2, P, Meta, toast } from '../co
 import { VNIcon } from '../icons';
 import { CHAT_ROLES } from '../data';
 import { useChats } from '../lib/ChatContext';
+import { useAppState } from '../lib/AdminContext';
+
+/* Welche Chat-Rubriken darf die angemeldete Rolle sehen und anlegen? */
+export function rolesForAuth(auth) {
+  if (!auth || !auth.role) return [];
+  return auth.role === 'owner' ? ['owner'] : ['clinic', 'network'];
+}
 
 export const PALETTE = ['#0f9b8e', '#0c7d72', '#2e6f9e', '#16a34a', '#e3a008', '#dc2626', '#8a5d05', '#6c7d79', '#7c3aed', '#db2777'];
 export const ICON_CHOICES = ['chat', 'paw2', 'dog', 'cat', 'rabbit', 'horse', 'bird', 'turtle', 'siren', 'cal', 'building', 'shield', 'heart', 'star', 'phone', 'note', 'home', 'cross', 'mail', 'user'];
@@ -57,9 +64,10 @@ function Sheet({ visible, onClose, title, children }) {
 }
 
 /* ---- Chat-Editor ---- */
-function ChatEditor({ initial, labels, onSave, onClose }) {
+function ChatEditor({ initial, labels, roles, onSave, onClose }) {
+  const choices = CHAT_ROLES.filter((r) => !roles || roles.includes(r.key));
   const [f, setF] = React.useState({
-    title: initial?.title || '', sub: initial?.sub || '', role: initial?.role || 'owner',
+    title: initial?.title || '', sub: initial?.sub || '', role: initial?.role || (choices[0] ? choices[0].key : 'owner'),
     color: initial?.color || '#0f9b8e', icon: initial?.icon || 'chat', animal: initial?.animal || 'other',
     labels: initial?.labels ? [...initial.labels] : [],
   });
@@ -78,7 +86,7 @@ function ChatEditor({ initial, labels, onSave, onClose }) {
         <Field label="Untertitel"><Input value={f.sub} onChangeText={(v) => set('sub', v)} placeholder="z. B. Balu (Hund) · Notfall" /></Field>
         <Field label="Bereich">
           <View style={{ flexDirection: 'row', gap: 6 }}>
-            {CHAT_ROLES.map((r) => (
+            {choices.map((r) => (
               <TouchableOpacity key={r.key} onPress={() => set('role', r.key)}
                 style={[cs.roleBtn, f.role === r.key && { borderColor: C.teal600, backgroundColor: C.teal50 }]}>
                 <Text style={[{ fontSize: 11.5, fontWeight: '600', color: C.ink2, textAlign: 'center' }, f.role === r.key && { color: C.teal700 }]}>{r.label}</Text>
@@ -187,7 +195,7 @@ function ChatSettings({ settings, setSetting, onClose, resetSeed, clearAll }) {
 /* ---- Chat-Zeile ---- */
 function ChatRow({ chat, labels, onOpen, onMenu }) {
   const last = chat.messages[chat.messages.length - 1];
-  const lastText = last ? (last.type === 'note' ? 'Abschlussnotiz' : last.type === 'image' ? '📷 Bild' : last.text) : 'Noch keine Nachricht';
+  const lastText = last ? (last.deleted ? 'Nachricht gelöscht' : last.type === 'note' ? 'Abschlussnotiz' : last.type === 'image' ? '📷 Bild' : last.type === 'file' ? '📎 ' + (last.fileName || 'Datei') : last.text) : 'Noch keine Nachricht';
   const chatLabels = (chat.labels || []).map((id) => labels.find((l) => l.id === id)).filter(Boolean);
   return (
     <TouchableOpacity style={cs.row} activeOpacity={0.7} onPress={onOpen} onLongPress={onMenu}>
@@ -214,11 +222,31 @@ function ChatRow({ chat, labels, onOpen, onMenu }) {
 
 export default function ChatsScreen({ navigation }) {
   const cx = useChats();
+  const { auth } = useAppState();
   const { visibleChats, labels, settings } = cx;
   const [filter, setFilter] = React.useState(null);
   const [editor, setEditor] = React.useState(null);
   const [labelMgr, setLabelMgr] = React.useState(false);
   const [settingsOpen, setSettingsOpen] = React.useState(false);
+
+  const roles = rolesForAuth(auth);
+  /* Rubrik-Chips nur dort, wo es mehr als eine gibt (also für Praxen:
+     Posteingang / Netzwerk). Die Mechanik steckt schon im filter-State. */
+  const roleChips = roles.length > 1 ? CHAT_ROLES.filter((r) => roles.includes(r.key)) : [];
+
+  // Ohne Anmeldung keine Chats — siehe Filter im Store.
+  if (!auth.role) {
+    return (
+      <View style={{ flex: 1, backgroundColor: C.surface2, padding: S.s5 }}>
+        <Card style={{ alignItems: 'center' }}>
+          <VNIcon.lock s={26} c={C.teal700} />
+          <H2 style={{ marginTop: 10 }}>Bitte anmelden</H2>
+          <P style={{ marginTop: 6, textAlign: 'center' }}>Melden Sie sich an, um Ihre Chats zu sehen.</P>
+          <Btn label="Zur Anmeldung" size="lg" style={{ marginTop: 14 }} onPress={() => navigation.navigate('KontoTab')} />
+        </Card>
+      </View>
+    );
+  }
 
   let list = filter ? visibleChats.filter((c) => (c.labels || []).includes(filter) || c.role === filter) : visibleChats;
   if (settings.showPinned) list = [...list].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
@@ -248,12 +276,17 @@ export default function ChatsScreen({ navigation }) {
           </View>
         </View>
 
-        {settings.showLabels && labels.length > 0 ? (
+        {roleChips.length > 0 || (settings.showLabels && labels.length > 0) ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 2 }}>
             <TouchableOpacity style={[cs.filterChip, filter === null && { backgroundColor: C.teal50, borderColor: C.teal100 }]} onPress={() => setFilter(null)}>
               <Text style={[cs.filterText, filter === null && { color: C.teal700 }]}>Alle</Text>
             </TouchableOpacity>
-            {labels.map((l) => (
+            {roleChips.map((r) => (
+              <TouchableOpacity key={r.key} style={[cs.filterChip, filter === r.key && { backgroundColor: C.teal50, borderColor: C.teal100 }]} onPress={() => setFilter(filter === r.key ? null : r.key)}>
+                <Text style={[cs.filterText, filter === r.key && { color: C.teal700 }]}>{r.key === 'clinic' ? 'Posteingang' : 'Netzwerk'}</Text>
+              </TouchableOpacity>
+            ))}
+            {(settings.showLabels ? labels : []).map((l) => (
               <TouchableOpacity key={l.id} style={[cs.filterChip, { borderColor: filter === l.id ? l.color : C.line2, backgroundColor: filter === l.id ? l.color + '22' : C.surface3 }]} onPress={() => setFilter(filter === l.id ? null : l.id)}>
                 <Glyph name={l.icon} s={13} c={filter === l.id ? l.color : C.ink3} />
                 <Text style={[cs.filterText, { color: filter === l.id ? l.color : C.ink2 }]}>{l.name}</Text>
@@ -264,7 +297,7 @@ export default function ChatsScreen({ navigation }) {
 
         {list.length === 0 ? (
           <Card style={{ alignItems: 'center' }}>
-            <P>Keine Chats {filter ? 'mit diesem Label' : 'vorhanden'}.</P>
+            <P>Keine Chats {filter ? 'mit diesem Filter' : 'vorhanden'}.</P>
             <Btn label="Chat erstellen" icon="plus" size="sm" style={{ marginTop: 10 }} onPress={() => setEditor('new')} />
           </Card>
         ) : (
@@ -279,7 +312,7 @@ export default function ChatsScreen({ navigation }) {
       </ScrollView>
 
       {editor ? (
-        <ChatEditor initial={editor === 'new' ? null : editor} labels={labels}
+        <ChatEditor initial={editor === 'new' ? null : editor} labels={labels} roles={roles}
           onClose={() => setEditor(null)}
           onSave={(data) => {
             if (editor === 'new') { const id = cx.createChat(data); toast('Chat erstellt.', 'success'); setEditor(null); navigation.navigate('ChatThread', { chatId: id }); }

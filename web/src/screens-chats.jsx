@@ -2,10 +2,19 @@
    Liste mit Label-Filter, Erstellen/Bearbeiten, Anpinnen, Löschen,
    Label-Verwaltung, Einstellungen und Thread-Ansicht. */
 import React from 'react';
-import { VNIcon, AnimalGlyph, Switch, toast } from './components.jsx';
+import { VNIcon, Switch, toast } from './components.jsx';
 import { CHAT_ROLES } from './data.js';
 import { aiChat, vetSystemPrompt, toAiMessages } from './lib/ai.js';
+import { botConversationReply, botGreetingText, botImageReply } from './bot.js';
 import { useChats } from './lib/chats.jsx';
+import { useAdmin } from './lib/adminContext.jsx';
+
+/* Welche Chat-Rubriken darf die angemeldete Rolle sehen und anlegen?
+   Muss zum Filter in lib/chats.jsx passen. */
+export function rolesForAuth(auth) {
+  if (!auth || !auth.role) return [];
+  return auth.role === 'owner' ? ['owner'] : ['clinic', 'network'];
+}
 
 const PALETTE = ['#0f9b8e', '#0c7d72', '#2e6f9e', '#16a34a', '#e3a008', '#dc2626', '#8a5d05', '#6c7d79', '#7c3aed', '#db2777'];
 const ICON_CHOICES = ['chat', 'paw2', 'dog', 'cat', 'rabbit', 'horse', 'bird', 'turtle', 'siren', 'cal', 'building', 'shield', 'heart', 'star', 'phone', 'note', 'home', 'cross', 'mail', 'user'];
@@ -58,9 +67,10 @@ function Modal({ title, onClose, children, wide }) {
 }
 
 /* ---------- Chat-Editor (neu / bearbeiten) ---------- */
-function ChatEditor({ initial, labels, onSave, onClose }) {
+function ChatEditor({ initial, labels, roles, onSave, onClose }) {
+  const choices = CHAT_ROLES.filter((r) => !roles || roles.includes(r.key));
   const [f, setF] = React.useState(() => ({
-    title: initial?.title || '', sub: initial?.sub || '', role: initial?.role || 'owner',
+    title: initial?.title || '', sub: initial?.sub || '', role: initial?.role || (choices[0] ? choices[0].key : 'owner'),
     color: initial?.color || '#0f9b8e', icon: initial?.icon || 'chat', animal: initial?.animal || 'other',
     labels: initial?.labels ? [...initial.labels] : [],
   }));
@@ -86,7 +96,7 @@ function ChatEditor({ initial, labels, onSave, onClose }) {
         </div>
         <div className="field"><label>Bereich</label>
           <div className="choice-grid cols-3">
-            {CHAT_ROLES.map((r) => (
+            {choices.map((r) => (
               <button key={r.key} type="button" className={'choice' + (f.role === r.key ? ' is-on' : '')} onClick={() => set('role', r.key)}>
                 {r.label}{f.role === r.key && <VNIcon.check s={16} />}
               </button>
@@ -199,18 +209,88 @@ function ChatSettings({ settings, setSetting, onClose, resetSeed, clearAll }) {
   );
 }
 
+/* Kleines „…"-Menü je Nachricht — gleiches Markup wie das Menü in ChatRow. */
+const REACTIONS = ['👍', '❤️', '😂', '😮'];
+function MsgMenu({ mine, editable, onReact, onEdit, onDelete }) {
+  const [open, setOpen] = React.useState(false);
+  return (
+    <span style={{ position: 'relative' }}>
+      <button className="vn-back" style={{ width: 26, height: 26, opacity: 0.75 }} onClick={() => setOpen((o) => !o)} aria-label="Nachrichten-Menü">…</button>
+      {open && (
+        <>
+          <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 49 }} />
+          <div className="card card-pad" style={{ position: 'absolute', right: 0, top: 30, zIndex: 50, padding: 8, minWidth: 170, boxShadow: 'var(--sh-3)' }}>
+            <div className="row gap-2" style={{ padding: '2px 4px 6px' }}>
+              {REACTIONS.map((e) => (
+                <button key={e} className="btn btn-ghost btn-sm" style={{ padding: '2px 6px', fontSize: 16 }} onClick={() => { setOpen(false); onReact(e); }}>{e}</button>
+              ))}
+            </div>
+            {mine && editable && <button className="btn btn-ghost btn-sm btn-block" style={{ justifyContent: 'flex-start' }} onClick={() => { setOpen(false); onEdit(); }}><VNIcon.pencil s={15} /> Bearbeiten</button>}
+            {mine && <button className="btn btn-ghost btn-sm btn-block" style={{ justifyContent: 'flex-start', color: 'var(--red-ink)' }} onClick={() => { setOpen(false); onDelete(); }}><VNIcon.x s={15} /> Löschen</button>}
+          </div>
+        </>
+      )}
+    </span>
+  );
+}
+
+/* WhatsApp-Look: ein einziges kleines Badge, das auf der unteren Blasenkante
+   sitzt (nicht als eigene Zeile darunter). Reagieren beide Seiten, stehen
+   beide Emoji nebeneinander im selben Badge. */
+function Reactions({ m, mine }) {
+  const entries = Object.entries(m.reactions || {});
+  if (!entries.length) return null;
+  return (
+    <span className={'reaction-badge ' + (mine ? 'on-right' : 'on-left')}>
+      {entries.map(([side, emoji]) => <span key={side}>{emoji}</span>)}
+    </span>
+  );
+}
+
+/* Zeitzeile: Uhrzeit + optional „(bearbeitet)" + Herkunft der Antwort.
+   `source` ist optional — alte Nachrichten zeigen wie bisher nur die Zeit. */
+function messageStamp(m) {
+  return m.time
+    + (m.editedAt ? ' · (bearbeitet)' : '')
+    + (m.source === 'ai' ? ' · KI' : m.source === 'bot' ? ' · Bot' : '');
+}
+
 /* ---------- Thread ---------- */
 function ChatThread({ chat, onBack, addMessage, labels, settings }) {
+  const { editMessage, deleteMessage, toggleReaction } = useChats();
   const me = chat.role === 'owner' ? 'owner' : 'clinic';
   const other = me === 'owner' ? 'clinic' : 'owner';
   const [draft, setDraft] = React.useState('');
   const [pendingImg, setPendingImg] = React.useState(null);
+  const [editIdx, setEditIdx] = React.useState(null); // Index der Nachricht im Bearbeiten-Modus
   const [typing, setTyping] = React.useState(false);
+  const [attachMenu, setAttachMenu] = React.useState(false);
   const fileRef = React.useRef(null);
+  const camRef = React.useRef(null);
+  const docRef = React.useRef(null);
   const scrollRef = React.useRef(null);
   const handledRef = React.useRef('');
   const timersRef = React.useRef([]);
+  const botTimersRef = React.useRef([]);
   React.useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [chat.messages.length, typing]);
+
+  /* Mehrteilige Bot-Antworten nacheinander senden. Bewusst NICHT über
+     timersRef: dessen Cleanup läuft schon beim nächsten Nachrichten-Update
+     und würde die zweite Nachricht verschlucken. Diese Timer werden nur beim
+     Chat-Wechsel/Verlassen abgeräumt. */
+  const sendBotTexts = (targetId, from, texts) => {
+    const list = (texts || []).filter(Boolean).slice(0, 3);
+    if (!list.length) { setTyping(false); return; }
+    list.forEach((tx, i) => {
+      const t = setTimeout(() => {
+        botTimersRef.current = botTimersRef.current.filter((x) => x !== t);
+        if (i === 0) setTyping(false);
+        addMessage(targetId, { from, text: tx, time: 'jetzt', source: 'bot' });
+      }, 450 + i * 950);
+      botTimersRef.current.push(t);
+    });
+  };
+  React.useEffect(() => () => { botTimersRef.current.forEach(clearTimeout); botTimersRef.current = []; }, [chat.id]);
 
   // Auto-Antwort-Bot 2.0: reagiert, wenn die letzte Nachricht von MIR ist
   // (oder Chat leer → Begrüßung). Kann mehrteilige Antworten senden und
@@ -228,12 +308,12 @@ function ChatThread({ chat, onBack, addMessage, labels, settings }) {
     handledRef.current = sig;
 
     let alive = true;
-    const schedule = (fn, delay) => { const t = setTimeout(() => { if (alive) fn(); }, delay); timersRef.current.push(t); };
     const practiceName = chat.role === 'owner' ? chat.title : 'Tierarztpraxis Drautal';
 
-    // NUR KI — der alte Regel-Bot ist entfernt. Wenn Ollama nicht erreichbar
-    // ist, erscheint eine SICHTBARE Fehlermeldung im Chat (kein stilles
-    // Zurückfallen mehr — so ist immer klar, ob wirklich die KI antwortet).
+    // Zuerst die KI (Ollama über das Studio). Ist sie nicht erreichbar —
+    // z. B. bei einer Vorführung ohne Netz —, übernimmt der eingebaute
+    // Regel-Bot aus bot.js. Der Chat bleibt so nie stumm und zeigt nie eine
+    // technische Fehlermeldung.
     (async () => {
       try {
         if (settings.botTyping) setTyping(true);
@@ -244,15 +324,14 @@ function ChatThread({ chat, onBack, addMessage, labels, settings }) {
         const text = await aiChat({ messages: history, model: settings.aiModel, aiBaseUrl: settings.aiBaseUrl });
         if (!alive) return;
         setTyping(false);
-        addMessage(chat.id, { from: other, text, time: 'jetzt' });
-      } catch (e) {
+        addMessage(chat.id, { from: other, text, time: 'jetzt', source: 'ai' });
+      } catch {
         if (!alive) return;
-        setTyping(false);
-        addMessage(chat.id, {
-          from: other,
-          text: '⚠️ KI NICHT ERREICHBAR — keine Antwort möglich. (' + (e && e.message ? e.message : 'Fehler') + ') Prüfe: Läuft Ollama auf dem Server? Ist das Modell installiert (Studio → KI)? Läuft die App über das Studio (Port 3000)?',
-          time: 'jetzt',
-        });
+        let texts;
+        if (isGreeting) texts = [botGreetingText(other, practiceName)];
+        else if (last && last.type === 'image') texts = [botImageReply(other)];
+        else texts = botConversationReply({ messages: msgs, userText: (last && last.text) || '', fromRole: other, practiceName }).texts;
+        sendBotTexts(chat.id, other, texts);
       }
     })();
 
@@ -261,68 +340,130 @@ function ChatThread({ chat, onBack, addMessage, labels, settings }) {
   }, [chat.messages.length, chat.id, settings && settings.botEnabled]);
 
   const send = () => {
+    if (editIdx != null) {
+      if (!draft.trim()) { toast('Text darf nicht leer sein.', 'error'); return; }
+      editMessage(chat.id, editIdx, draft.trim()); setEditIdx(null); setDraft(''); toast('Nachricht bearbeitet.', 'success'); return;
+    }
     if (pendingImg) { addMessage(chat.id, { from: me, type: 'image', src: pendingImg, text: draft.trim(), time: 'jetzt' }); setPendingImg(null); setDraft(''); return; }
     if (!draft.trim()) return;
     addMessage(chat.id, { from: me, text: draft.trim(), time: 'jetzt' }); setDraft('');
   };
+  const cancelEdit = () => { setEditIdx(null); setDraft(''); };
+  const removeMsg = (i) => {
+    if (!confirm('Diese Nachricht löschen?')) return;
+    deleteMessage(chat.id, i); if (editIdx === i) cancelEdit(); toast('Nachricht gelöscht.', 'info');
+  };
+  /* Anhänge landen als Base64 im localStorage. Ohne Obergrenze sprengt schon
+     ein PDF oder Video das Kontingent — und dann wären ALLE Chats weg. */
+  const MAX_BYTES = 4 * 1024 * 1024;
   const onPickFile = (e) => {
-    const file = e.target.files && e.target.files[0]; if (!file) return;
+    const file = e.target.files && e.target.files[0]; e.target.value = '';
+    if (!file) return;
+    if (file.size > MAX_BYTES) { toast('Datei zu groß (max. 4 MB) — bitte kleinere Datei wählen.', 'error'); return; }
     const reader = new FileReader();
-    reader.onload = () => { setPendingImg(reader.result); toast('Bild bereit zum Senden.', 'info'); };
-    reader.readAsDataURL(file); e.target.value = '';
+    reader.onload = () => {
+      if (file.type && file.type.startsWith('image/')) { setPendingImg(reader.result); toast('Bild bereit zum Senden.', 'info'); return; }
+      addMessage(chat.id, { from: me, type: 'file', src: reader.result, fileName: file.name, fileMime: file.type || '', text: '', time: 'jetzt' });
+      toast('Datei gesendet.', 'success');
+    };
+    reader.onerror = () => toast('Datei konnte nicht gelesen werden.', 'error');
+    reader.readAsDataURL(file);
   };
   const chatLabels = (chat.labels || []).map((id) => labels.find((l) => l.id === id)).filter(Boolean);
 
   return (
-    <div className="vn-page">
-      <div className="vn-page-wide d-narrow">
-        <button className="btn btn-secondary btn-sm" onClick={onBack} style={{ marginBottom: 14 }}><VNIcon.back s={15} /> Alle Chats</button>
-        <div className="card" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 460 }}>
+    <>
+      <button className="btn btn-secondary btn-sm" onClick={onBack} style={{ marginBottom: 14 }}><VNIcon.back s={15} /> Alle Chats</button>
+      <div className="card" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 460 }}>
           <div className="chat-head">
             <span className="convo-avatar" style={{ width: 40, height: 40, background: chat.color + '22' }}><Icon name={chat.icon} s={20} c={chat.color} /></span>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700, fontSize: 15 }}>{chat.title}</div>
+            <div className="chat-head-main">
+              <div className="chat-head-title">{chat.title}</div>
               <div className="vn-meta">{chat.sub}</div>
             </div>
-            <div className="row gap-2">{chatLabels.map((l) => <span key={l.id} className="tag" style={{ background: l.color + '22', color: l.color, borderColor: l.color }}><Icon name={l.icon} s={12} c={l.color} />{l.name}</span>)}</div>
+            <div className="row gap-2 m-hide" style={{ flex: 'none' }}>{chatLabels.map((l) => <span key={l.id} className="tag" style={{ background: l.color + '22', color: l.color, borderColor: l.color }}><Icon name={l.icon} s={12} c={l.color} />{l.name}</span>)}</div>
           </div>
           <div className="chat-scroll" ref={scrollRef} style={{ flex: 1 }}>
             {chat.messages.map((m, i) => {
               if (m.type === 'note') return (
                 <div key={i} className="note-msg"><div className="note-box"><span className="note-ic"><VNIcon.note s={16} /></span><div><div className="note-label">Abschlussnotiz der Praxis</div>{m.text}<div className="note-time">{m.time}</div></div></div></div>
               );
-              if (m.type === 'image') return (
-                <div key={i} className={'bubble-row' + (m.from === me ? ' me' : '')}>
+              const mine = m.from === me;
+              if (m.deleted) return (
+                <div key={i} className={'bubble-row' + (mine ? ' me' : '')}>
                   <span className={'bubble-av ' + m.from}><VNIcon.paw2 s={14} /></span>
-                  <div><div className={'bubble-img ' + m.from}><img src={m.src} alt="Anhang" />{m.text && <div className="cap">{m.text}</div>}</div><div className="bubble-time">{m.time}</div></div>
+                  <div className="bubble-col"><div className={'bubble ' + m.from} style={{ background: 'var(--surface-3)', color: 'var(--ink-3)', fontStyle: 'italic', border: '1px solid var(--line)' }}>Nachricht gelöscht</div><div className="bubble-time">{m.time}</div></div>
                 </div>
               );
+              const hasReaction = Object.keys(m.reactions || {}).length > 0;
+              const menu = (
+                <MsgMenu mine={mine} editable={!m.type}
+                  onReact={(e) => toggleReaction(chat.id, i, me, e)}
+                  onEdit={() => { setEditIdx(i); setDraft(m.text || ''); }}
+                  onDelete={() => removeMsg(i)} />
+              );
+              let body;
+              if (m.type === 'image') body = <div className={'bubble-img ' + m.from}><img src={m.src} alt="Anhang" />{m.text && <div className="cap">{m.text}</div>}</div>;
+              else if (m.type === 'file') body = (
+                <a className={'bubble bubble-file ' + m.from} href={m.src} download={m.fileName || 'anhang'}>
+                  <VNIcon.note s={16} /> <span className="bf-name">{m.fileName || 'Datei'}</span>
+                </a>
+              );
+              else body = <div className={'bubble ' + m.from} style={editIdx === i ? { outline: '2px solid var(--yellow)' } : undefined}>{m.text}</div>;
               return (
-                <div key={i} className={'bubble-row' + (m.from === me ? ' me' : '')}>
+                <div key={i} className={'bubble-row' + (mine ? ' me' : '')}>
                   <span className={'bubble-av ' + m.from}><VNIcon.paw2 s={14} /></span>
-                  <div><div className={'bubble ' + m.from}>{m.text}</div><div className="bubble-time">{m.time}</div></div>
+                  <div className="bubble-col">
+                    <div className="bubble-line">
+                      {mine && menu}
+                      <span className={'bubble-wrap' + (hasReaction ? ' has-reaction' : '')}>
+                        {body}
+                        <Reactions m={m} mine={mine} />
+                      </span>
+                      {!mine && menu}
+                    </div>
+                    <div className="bubble-time">{messageStamp(m)}</div>
+                  </div>
                 </div>
               );
             })}
             {typing && (
               <div className="bubble-row">
                 <span className={'bubble-av ' + other}><VNIcon.paw2 s={14} /></span>
-                <div><div className={'bubble ' + other + ' typing-bubble'}><span className="dot"></span><span className="dot"></span><span className="dot"></span></div></div>
+                <div className="bubble-col"><div className={'bubble ' + other + ' typing-bubble'}><span className="dot"></span><span className="dot"></span><span className="dot"></span></div></div>
               </div>
             )}
           </div>
+          {editIdx != null && (
+            <div className="img-preview"><span style={{ color: 'var(--teal-700)' }}><VNIcon.pencil s={16} /></span><span className="vn-meta" style={{ flex: 1 }}>Nachricht bearbeiten</span><button className="vn-back ip-x" style={{ width: 32, height: 32 }} onClick={cancelEdit} aria-label="Abbrechen"><VNIcon.x s={16} /></button></div>
+          )}
           {pendingImg && (
             <div className="img-preview"><img src={pendingImg} alt="Vorschau" /><span className="vn-meta">Bild angehängt</span><button className="vn-back ip-x" style={{ width: 32, height: 32 }} onClick={() => setPendingImg(null)}><VNIcon.x s={16} /></button></div>
           )}
           <div className="chat-compose">
+            {/* Drei Varianten, reine Browser-Mittel — kein zusätzliches Paket.
+                „capture" öffnet am Handy direkt die Kamera, am PC den normalen Dialog. */}
             <input type="file" accept="image/*" ref={fileRef} onChange={onPickFile} style={{ display: 'none' }} />
-            <button className="chat-attach" onClick={() => fileRef.current && fileRef.current.click()} aria-label="Bild anhängen"><VNIcon.camera s={20} /></button>
-            <input className="input" value={draft} placeholder={pendingImg ? 'Bildunterschrift (optional) …' : 'Nachricht schreiben …'} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && send()} />
+            <input type="file" accept="image/*" capture="environment" ref={camRef} onChange={onPickFile} style={{ display: 'none' }} />
+            <input type="file" ref={docRef} onChange={onPickFile} style={{ display: 'none' }} />
+            <span style={{ position: 'relative' }}>
+              <button className="chat-attach" onClick={() => setAttachMenu((o) => !o)} aria-label="Anhang"><VNIcon.camera s={20} /></button>
+              {attachMenu && (
+                <>
+                  <div onClick={() => setAttachMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 49 }} />
+                  <div className="card card-pad" style={{ position: 'absolute', left: 0, bottom: 46, zIndex: 50, padding: 8, minWidth: 150, boxShadow: 'var(--sh-3)' }}>
+                    <button className="btn btn-ghost btn-sm btn-block" style={{ justifyContent: 'flex-start' }} onClick={() => { setAttachMenu(false); camRef.current && camRef.current.click(); }}>📷 Kamera</button>
+                    <button className="btn btn-ghost btn-sm btn-block" style={{ justifyContent: 'flex-start' }} onClick={() => { setAttachMenu(false); fileRef.current && fileRef.current.click(); }}>🖼️ Bild</button>
+                    <button className="btn btn-ghost btn-sm btn-block" style={{ justifyContent: 'flex-start' }} onClick={() => { setAttachMenu(false); docRef.current && docRef.current.click(); }}>📎 Datei</button>
+                  </div>
+                </>
+              )}
+            </span>
+            <input className="input" value={draft} placeholder={editIdx != null ? 'Nachricht bearbeiten …' : pendingImg ? 'Bildunterschrift (optional) …' : 'Nachricht schreiben …'} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && send()} />
             <button className="chat-send" onClick={send} aria-label="Senden"><VNIcon.send s={18} /></button>
           </div>
-        </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -330,13 +471,16 @@ function ChatThread({ chat, onBack, addMessage, labels, settings }) {
 function ChatRow({ chat, labels, onOpen, onEdit, onPin, onDelete }) {
   const [menu, setMenu] = React.useState(false);
   const last = chat.messages[chat.messages.length - 1];
-  const lastText = last ? (last.type === 'note' ? 'Abschlussnotiz' : last.type === 'image' ? '📷 Bild' : last.text) : 'Noch keine Nachricht';
+  const lastText = last ? (last.deleted ? 'Nachricht gelöscht' : last.type === 'note' ? 'Abschlussnotiz' : last.type === 'image' ? '📷 Bild' : last.type === 'file' ? '📎 ' + (last.fileName || 'Datei') : last.text) : 'Noch keine Nachricht';
   const chatLabels = (chat.labels || []).map((id) => labels.find((l) => l.id === id)).filter(Boolean);
   return (
     <div className="convo-item" style={{ cursor: 'pointer', position: 'relative' }}>
       <button className="convo-avatar" onClick={onOpen} style={{ background: chat.color + '22', border: 0 }}><Icon name={chat.icon} s={20} c={chat.color} /></button>
       <div className="convo-main" onClick={onOpen} style={{ minWidth: 0 }}>
-        <span className="convo-name">{chat.pinned && <VNIcon.star s={13} fill="var(--yellow)" c="var(--yellow)" />} {chat.title}</span>
+        <span className="convo-name">
+          {chat.pinned && <VNIcon.star s={13} fill="var(--yellow)" c="var(--yellow)" />}
+          <span className="convo-title">{chat.title}</span>
+        </span>
         <span className="convo-snippet">{lastText}</span>
         {chatLabels.length > 0 && (
           <span className="row gap-2" style={{ marginTop: 4, flexWrap: 'wrap' }}>
@@ -362,8 +506,12 @@ function ChatRow({ chat, labels, onOpen, onEdit, onPin, onDelete }) {
   );
 }
 
-/* ---------- Hauptscreen ---------- */
-export function ScreenChats() {
+/* ---------- Liste + Thread als wiederverwendbares Panel ----------
+   Wird an zwei Stellen eingesetzt: als eigene Seite (ScreenChats) und im
+   Nachrichten-Tab des Praxis-Dashboards. Dadurch gibt es nur EINEN Code-Pfad
+   und beide Ansichten zeigen garantiert dieselben Chats aus demselben Store. */
+export function ChatsPanel({ nav, title }) {
+  const { auth } = useAdmin();
   const { visibleChats, labels, settings, createChat, updateChat, deleteChat, togglePin, addMessage, markRead, createLabel, updateLabel, deleteLabel, setSetting, resetSeed, clearAll } = useChats();
   const [openId, setOpenId] = React.useState(null);
   const [filter, setFilter] = React.useState(null);
@@ -374,61 +522,86 @@ export function ScreenChats() {
   const openChat = visibleChats.find((c) => c.id === openId);
   React.useEffect(() => { if (openId) markRead(openId); /* eslint-disable-next-line */ }, [openId]);
 
-  if (openChat) {
-    return <ChatThread chat={openChat} labels={labels} addMessage={addMessage} settings={settings} onBack={() => setOpenId(null)} />;
+  // Ohne Anmeldung keine Chats — siehe Filter in lib/chats.jsx.
+  if (!auth.role) {
+    return (
+      <div className="card card-pad" style={{ textAlign: 'center' }}>
+        <span style={{ color: 'var(--teal-700)' }}><VNIcon.lock s={26} /></span>
+        <h2 className="vn-h2" style={{ marginTop: 8 }}>Bitte anmelden</h2>
+        <p className="vn-text" style={{ marginTop: 6 }}>Melden Sie sich an, um Ihre Chats zu sehen.</p>
+        {nav && <button className="btn btn-primary" style={{ marginTop: 14 }} onClick={() => nav('auth')}>Zur Anmeldung</button>}
+      </div>
+    );
   }
+
+  if (openChat) {
+    return (
+      <div className="chat-panel">
+        <ChatThread chat={openChat} labels={labels} addMessage={addMessage} settings={settings} onBack={() => setOpenId(null)} />
+      </div>
+    );
+  }
+
+  const roles = rolesForAuth(auth);
+  /* Rubrik-Chips nur dort, wo es mehr als eine gibt (also für Praxen:
+     Posteingang / Netzwerk). Die Mechanik steckt schon im filter-State. */
+  const roleChips = roles.length > 1 ? CHAT_ROLES.filter((r) => roles.includes(r.key)) : [];
+  const labelChips = settings.showLabels ? labels : [];
 
   let list = filter ? visibleChats.filter((c) => (c.labels || []).includes(filter) || c.role === filter) : visibleChats;
   if (settings.showPinned) list = [...list].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
 
   return (
-    <div className="vn-page">
-      <div className="vn-page-wide d-narrow stack-4">
-        <div className="row between">
-          <div>
-            <h2 className="vn-h2">Chats</h2>
-            <p className="vn-meta" style={{ marginTop: 2 }}>{visibleChats.length} {visibleChats.length === 1 ? 'Unterhaltung' : 'Unterhaltungen'}</p>
-          </div>
-          <div className="row gap-2">
-            <button className="vn-back" style={{ width: 40, height: 40 }} title="Labels verwalten" onClick={() => setLabelMgr(true)}><VNIcon.filter s={18} /></button>
-            <button className="vn-back" style={{ width: 40, height: 40 }} title="Einstellungen" onClick={() => setSettingsOpen(true)}><VNIcon.refresh s={18} /></button>
-            <button className="btn btn-primary btn-sm" onClick={() => setEditor('new')}><VNIcon.plus s={16} /> Neu</button>
-          </div>
+    <div className="stack-4 chat-panel">
+      <div className="row between">
+        <div>
+          <h2 className="vn-h2">{title || 'Chats'}</h2>
+          <p className="vn-meta" style={{ marginTop: 2 }}>{visibleChats.length} {visibleChats.length === 1 ? 'Unterhaltung' : 'Unterhaltungen'}</p>
         </div>
-
-        {settings.showLabels && labels.length > 0 && (
-          <div className="row gap-2" style={{ flexWrap: 'wrap' }}>
-            <button className={'tag' + (filter === null ? ' tag-accent' : '')} style={{ cursor: 'pointer' }} onClick={() => setFilter(null)}>Alle</button>
-            {labels.map((l) => (
-              <button key={l.id} className="tag" style={{ cursor: 'pointer', borderColor: filter === l.id ? l.color : 'var(--line-2)', background: filter === l.id ? l.color + '22' : 'var(--surface-3)', color: filter === l.id ? l.color : 'var(--ink-2)' }} onClick={() => setFilter(filter === l.id ? null : l.id)}>
-                <Icon name={l.icon} s={13} c={filter === l.id ? l.color : 'var(--ink-3)'} /> {l.name}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {list.length === 0 ? (
-          <div className="card card-pad" style={{ textAlign: 'center' }}>
-            <p className="vn-text">Keine Chats {filter ? 'mit diesem Label' : 'vorhanden'}.</p>
-            <button className="btn btn-primary btn-sm" style={{ marginTop: 12 }} onClick={() => setEditor('new')}><VNIcon.plus s={15} /> Chat erstellen</button>
-          </div>
-        ) : (
-          <div className="card" style={{ overflow: 'visible' }}>
-            <div className="convo-list">
-              {list.map((c) => (
-                <ChatRow key={c.id} chat={c} labels={labels}
-                  onOpen={() => setOpenId(c.id)}
-                  onEdit={() => setEditor(c)}
-                  onPin={() => togglePin(c.id)}
-                  onDelete={() => { if (confirm('Chat „' + c.title + '“ löschen?')) { deleteChat(c.id); toast('Chat gelöscht.', 'info'); } }} />
-              ))}
-            </div>
-          </div>
-        )}
+        <div className="row gap-2">
+          <button className="vn-back" style={{ width: 40, height: 40 }} title="Labels verwalten" onClick={() => setLabelMgr(true)}><VNIcon.filter s={18} /></button>
+          <button className="vn-back" style={{ width: 40, height: 40 }} title="Einstellungen" onClick={() => setSettingsOpen(true)}><VNIcon.refresh s={18} /></button>
+          <button className="btn btn-primary btn-sm" onClick={() => setEditor('new')}><VNIcon.plus s={16} /> Neu</button>
+        </div>
       </div>
 
+      {(roleChips.length > 0 || labelChips.length > 0) && (
+        <div className="row gap-2" style={{ flexWrap: 'wrap' }}>
+          <button className={'tag' + (filter === null ? ' tag-accent' : '')} style={{ cursor: 'pointer' }} onClick={() => setFilter(null)}>Alle</button>
+          {roleChips.map((r) => (
+            <button key={r.key} className={'tag' + (filter === r.key ? ' tag-accent' : '')} style={{ cursor: 'pointer' }} onClick={() => setFilter(filter === r.key ? null : r.key)}>
+              {r.key === 'clinic' ? 'Posteingang' : 'Netzwerk'}
+            </button>
+          ))}
+          {labelChips.map((l) => (
+            <button key={l.id} className="tag" style={{ cursor: 'pointer', borderColor: filter === l.id ? l.color : 'var(--line-2)', background: filter === l.id ? l.color + '22' : 'var(--surface-3)', color: filter === l.id ? l.color : 'var(--ink-2)' }} onClick={() => setFilter(filter === l.id ? null : l.id)}>
+              <Icon name={l.icon} s={13} c={filter === l.id ? l.color : 'var(--ink-3)'} /> {l.name}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {list.length === 0 ? (
+        <div className="card card-pad" style={{ textAlign: 'center' }}>
+          <p className="vn-text">Keine Chats {filter ? 'mit diesem Filter' : 'vorhanden'}.</p>
+          <button className="btn btn-primary btn-sm" style={{ marginTop: 12 }} onClick={() => setEditor('new')}><VNIcon.plus s={15} /> Chat erstellen</button>
+        </div>
+      ) : (
+        <div className="card" style={{ overflow: 'visible' }}>
+          <div className="convo-list">
+            {list.map((c) => (
+              <ChatRow key={c.id} chat={c} labels={labels}
+                onOpen={() => setOpenId(c.id)}
+                onEdit={() => setEditor(c)}
+                onPin={() => togglePin(c.id)}
+                onDelete={() => { if (confirm('Chat „' + c.title + '“ löschen?')) { deleteChat(c.id); toast('Chat gelöscht.', 'info'); } }} />
+            ))}
+          </div>
+        </div>
+      )}
+
       {editor && (
-        <ChatEditor initial={editor === 'new' ? null : editor} labels={labels}
+        <ChatEditor initial={editor === 'new' ? null : editor} labels={labels} roles={roles}
           onClose={() => setEditor(null)}
           onSave={(data) => {
             if (editor === 'new') { createChat(data); toast('Chat erstellt.', 'success'); }
@@ -438,6 +611,17 @@ export function ScreenChats() {
       )}
       {labelMgr && <LabelManager labels={labels} onClose={() => setLabelMgr(false)} createLabel={createLabel} updateLabel={updateLabel} deleteLabel={deleteLabel} />}
       {settingsOpen && <ChatSettings settings={settings} setSetting={setSetting} onClose={() => setSettingsOpen(false)} resetSeed={resetSeed} clearAll={clearAll} />}
+    </div>
+  );
+}
+
+/* ---------- Hauptscreen ---------- */
+export function ScreenChats({ nav }) {
+  return (
+    <div className="vn-page">
+      <div className="vn-page-wide d-narrow">
+        <ChatsPanel nav={nav} />
+      </div>
     </div>
   );
 }

@@ -2,7 +2,7 @@
    und Termin-Store. Chats laufen über den separaten ChatContext (nested). */
 import React from 'react';
 import { buildVNData } from '../data';
-import { loadHideTestData, storeHideTestData, loadAdminLoggedIn, storeAdminLoggedIn } from './admin';
+import { loadHideTestData, storeHideTestData, loadAdminLoggedIn, storeAdminLoggedIn, loadAuth, storeAuth, AUTH_EMPTY } from './admin';
 import { IS_CLEAN } from './config';
 
 const AppStateContext = React.createContext(null);
@@ -11,18 +11,21 @@ export function AppStateProvider({ children }) {
   const [hideTestData, setHide] = React.useState(IS_CLEAN);
   const [adminLoggedIn, setLogged] = React.useState(false);
   const [ready, setReady] = React.useState(false);
-  const [auth, setAuth] = React.useState({ role: null, name: '' });
+  const [auth, setAuthState] = React.useState({ ...AUTH_EMPTY });
   const [filters, setFilters] = React.useState({ animals: [], situations: [], districts: [], specialties: [], onlyConfirmed: false, onlyGreen: false, housecall: false, is24h: false });
 
   React.useEffect(() => {
-    Promise.all([loadHideTestData(), loadAdminLoggedIn()]).then(([h, a]) => {
+    Promise.all([loadHideTestData(), loadAdminLoggedIn(), loadAuth()]).then(([h, a, u]) => {
       // Saubere Version: Testdaten sind IMMER ausgeblendet (Flag gewinnt).
-      setHide(IS_CLEAN || h); setLogged(a); setReady(true);
+      setHide(IS_CLEAN || h); setLogged(a); setAuthState(u); setReady(true);
     });
   }, []);
 
   const setHideTestData = (on) => { setHide(IS_CLEAN || on); storeHideTestData(on); };
   const setAdminLoggedIn = (on) => { setLogged(on); storeAdminLoggedIn(on); };
+  /* Gleiches Muster wie oben: Zustand setzen + sofort persistieren, damit die
+     Anmeldung einen Neustart der App überlebt. */
+  const setAuth = (a) => { const next = a && a.role ? a : { ...AUTH_EMPTY }; setAuthState(next); storeAuth(next); };
 
   const data = React.useMemo(() => buildVNData(IS_CLEAN || hideTestData), [hideTestData]);
 

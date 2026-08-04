@@ -184,8 +184,8 @@ export function ConfirmLine({ practice }) {
   );
 }
 
-export function Meta({ children, style }) {
-  return <Text style={[st.meta, style]}>{children}</Text>;
+export function Meta({ children, style, numberOfLines }) {
+  return <Text style={[st.meta, style]} numberOfLines={numberOfLines}>{children}</Text>;
 }
 
 export function H1({ children, style }) { return <Text style={[st.h1, style]}>{children}</Text>; }

@@ -246,3 +246,45 @@ Alle Änderungen dieser Ausbaustufe, durchnummeriert. (Web = `web/`, Mobile = `m
 210. NUR NOCH KI im Chat: alter Regel-Bot komplett entfernt (Web + Mobile) — bei nicht erreichbarer KI erscheint eine sichtbare ⚠️-Fehlermeldung im Chat statt stillem Zurückfallen; Test-Befehle („Sag ‚…‘“) werden befolgt
 211. KI-Agent 2.0: Die KI liest die Aufgabe und plant die Schritte SELBST (JSON-Modus, validierter Aktions-Katalog: Navigation, Dashboard-Tabs, Filter, Detailseiten) — nicht mehr drei feste Schablonen; Bericht immer per KI
 212. docker-compose.yml neu: Ollama-Container gleich integriert (Modelle überleben Neustarts, Port 11434 offen zum Testen), fester EXPO_TOKEN-Platz, Anleitung für Neuinstallation im Datei-Kopf; Admin-Seite zeigt „KI immer aktiv“ statt totem Schalter
+
+---
+
+## 🐛 Fehlerbehebung & Nachrichten-Ausbau (vor Jugend Innovativ)
+
+213. **Mobile: Praxis-Dashboard stürzte beim Öffnen ab** — `DashboardScreen.js` benutzte eine nirgends definierte Variable `clinicChats` (ReferenceError beim Rendern). Jetzt korrekt aus `visibleChats` gefiltert (`role === 'clinic'`)
+214. **Mobile: Admin-Bereich stürzte in der sauberen Version ab** — `AdminScreen.js` verwendete `Text` ohne Import (nur im `IS_CLEAN`-Zweig sichtbar). Import ergänzt
+215. **Chat zeigt keine Fehlermeldung mehr, wenn die KI fehlt** — der eingebaute Regel-Bot (`bot.js`) ist in Web und Mobile wieder als Fallback angeschlossen. Ohne Server/Netz antwortet der Bot statt „⚠️ KI NICHT ERREICHBAR"; mehrteilige Bot-Antworten werden nacheinander gesendet
+216. Neues EAS-Build-Profil `preview-demo` für Vorführungen außerhalb des Heim-WLANs (Tailscale-Adresse eintragen; Anleitung ergänzt)
+217. **Anmeldung überlebt den Neustart** — `auth` wird jetzt persistiert (Mobile: AsyncStorage `vn_auth`, Web: localStorage `vn_auth`). Mobile zeigt bis zum Laden eine leere Fläche statt kurz „abgemeldet"
+218. Web: `auth` liegt jetzt im `AdminProvider` (über dem `ChatProvider`) — Voraussetzung für den Rollen-Filter
+219. **Web: Abmelden-Button** — der `AccountChip` hat ein Menü mit „Abmelden" (vorher gab es gar keinen Weg hinaus)
+220. **Rollen-Filter für Chats** (Web + Mobile): Tierhalter:innen sehen nur „Meine Tiere", Praxen Posteingang + Netzwerk, abgemeldet nichts. Statt leerer Liste erscheint ein Anmelde-Hinweis
+221. Praxen bekommen zusätzliche Filter-Chips „Posteingang" / „Netzwerk"; der Chat-Editor bietet nur noch Rubriken an, die die eigene Rolle auch sehen kann
+222. **Web: doppeltes Chat-System aufgelöst** — der Nachrichten-Tab des Praxis-Dashboards lief auf einem zweiten, nicht persistierten Datensatz (`D.CONVERSATIONS`). Er nutzt jetzt dieselbe Komponente `ChatsPanel` und denselben Store wie die Chats-Seite. `ChatView`, `MessagesPanel`, `clinicConvosMeta` und `ScreenOwnerMessages` entfernt; Abschlussnotizen aus dem Kalender landen im echten Chat-Store
+223. **Nachrichten bearbeiten, löschen und mit Emoji reagieren** (Web + Mobile) — neue Store-Funktionen `editMessage` / `deleteMessage` / `toggleReaction`; Löschen ist weich (Platzhalter „Nachricht gelöscht", Inhalt wird wirklich entfernt), Bearbeiten zeigt „(bearbeitet)". Alte Demo-Nachrichten laufen unverändert weiter (keine Migration)
+224. Mobile: langes Drücken auf eine Blase öffnet das Nachrichten-Menü; Web: kleiner „…"-Knopf je Nachricht
+225. Gelöschte Nachrichten werden nicht mehr an die KI geschickt (`toAiMessages`)
+226. **Anhänge: Kamera, Galerie und Dateien** — Mobile mit `expo-image-picker` (Kamera) und neuem `expo-document-picker`; Kamera-Berechtigung als Config-Plugin in `app.json` (wirkt erst nach neuem EAS-Build). Web mit drei Datei-Dialogen (Bild / Kamera via `capture` / beliebige Datei)
+227. Web: Anhänge über 4 MB werden abgelehnt, und ein fehlgeschlagener localStorage-Schreibvorgang meldet sich jetzt sichtbar — vorher wären die Chats stillschweigend verloren gegangen
+228. **Bot 2.1**: neue Anliegen (Augen, Haut/Allergie, Verhalten, Trächtigkeit, Senior-Vorsorge, Nachkontrolle, Versicherung/Kostenvoranschlag, Zweitmeinung, Abschied, Krallen-/Fellpflege), Entwarnungs-Erkennung („frisst wieder normal" ist kein Symptom mehr), tierartspezifische Zusätze, 4–5 Varianten je Anliegen, konkrete Preisantworten und eine deutlich ausgebaute Tierhalter-Persona
+
+---
+
+## 🎨 Runde 2 — Layout-Fehler, WhatsApp-Reaktionen, KI/Bot-Kennzeichnung, Bot 2.2
+
+229. **Überlauf-Fehler behoben: Text lief aus der Chat-Karte heraus** — `.convo-snippet` war ein reines `<span>` (`display: inline`), auf dem `overflow`/`text-overflow` laut CSS-Spezifikation **wirkungslos** sind. Die bereits vorhandene Ellipsis-Regel greift jetzt (`display: block`); zusätzlich wird der Chat-Titel in `.convo-title` gekürzt statt umzubrechen
+230. **Blasen der Gegenseite wurden künstlich breit gezogen** — `.bubble-row` fehlte das Gegenstück zu `.me`: ohne `align-self: flex-start` streckt der Flex-Container (`align-items: stretch`) die Zeile bis auf die volle `max-width: 78%`. Kurze Antworten sind jetzt textbreit
+231. Chat-Panel auf `max-width: 720px` begrenzt — im breiten Praxis-Dashboard sah der Chat vorher völlig anders aus als auf der Chats-Seite (1180px statt 640px)
+232. Weitere Überlauf-Härtung: `overflow-wrap: anywhere` auf Blasen (lange Links/Dateinamen sprengen die Karte nicht mehr), `min-width: 0` in allen Flex-Ketten, Kopfzeile des Threads kürzt Titel und Untertitel, Datei-Chip kürzt lange Dateinamen, Labels im Thread-Kopf auf schmalen Bildschirmen ausgeblendet
+233. Handy: Blasenbreite sitzt jetzt am Wrapper statt an der Blase, Thread-Kopf kürzt mit `numberOfLines`, `Meta` unterstützt `numberOfLines`
+234. **Geprüft:** 12 Seiten × 2 Breiten (375 px und 1440 px) im echten Browser vermessen, inkl. Extremfall mit 170 Zeichen ohne Leerzeichen und 62-Zeichen-Chattitel — **0 px Überlauf**
+235. **Reaktionen wie bei WhatsApp** — statt einer eigenen Zeile unter der Blase sitzt jetzt ein kleines rundes Emoji-Badge auf der unteren Blasenkante (11 px Überlappung, 2 px Rand in Hintergrundfarbe für den „ausgestanzten" Effekt). Web per `position: absolute`, Handy analog mit `paddingBottom` am Wrapper, damit Android das Badge nicht abschneidet
+236. **Antworten sind jetzt als „· KI" oder „· Bot" gekennzeichnet** — neues optionales Feld `source` an beiden Antwortpfaden in beiden Apps, angezeigt klein hinter der Uhrzeit. Damit ist bei einer Vorführung sofort erkennbar, ob wirklich die KI geantwortet hat
+237. **Bot 2.2: 594 → 951 Zeilen, 33 → 47 Anliegen, 272 Antwortvarianten** — neu: Entlaufen/Mikrochip, Silvester & Gewitter, Hitzevorbeugung, Narkose-Angst, OP-Nachsorge, Proben abgeben, Notdienst, Überweisung an Spezialist:in, Mehrtier-Haushalt, Welpen/Kitten, Gelenke/Arthrose, Gewichtsmanagement, Ratenzahlung
+238. Bot: eigene Tabelle für **häufige Irrtümer** (`MYTHS`) — Wohnungskatzen-Impfung, Milch für Katzen, Knochen füttern, warme Nase, Schwarz-Weiß-Sehen, Grasfressen, „einmal werfen ist gesünder", „ein bisschen Schokolade schadet nicht", Kastration macht dick, Zecken nur im Sommer, Katzen landen immer auf den Pfoten. Der Bot widerspricht höflich **und begründet** — bei akuten Beschwerden hat die Symptom-Antwort weiterhin Vorrang
+239. Bot: tierartspezifische Zusätze jetzt in **12 statt 5** Anliegen (Haut, Augen, Senior, Verhalten, Gewicht, Fellpflege, Gelenke, Hitze zusätzlich) — dieselbe Frage bekommt für Katze, Hund, Kleintier, Pferd, Vogel und Reptil eine andere Antwort
+240. Bot: Grammatik-Fehler behoben — der Platzhalter ohne bekannten Tiernamen war fest „Ihrem Tier" (Dativ) und landete dadurch in Sätzen wie „Wie viel wiegt Ihrem Tier?". Jetzt zwei Varianten (`petRef` / `petDat`), 12 Stellen korrigiert
+241. Bot: Tierhalter-Persona reagiert auf deutlich mehr Praxis-Nachfragen (Zustand, Nüchternheit, Medikamentengabe, Schonung, Untersuchungen, Kosten, Unterlagen)
+242. **Studio: Standard-Modell auf `qwen2.5:3b`** — `qwen2.5:7b` braucht allein für Ollama ~8 GB RAM, der Server hat ≤ 8 GB insgesamt. Stern im Katalog verschoben, RAM-Hinweise in beiden Beschreibungen, Platzhalter und Doku angepasst. `qwen2.5:7b` bleibt als Testoption im Katalog. **Achtung:** auf bestehenden Installationen einmalig umstellen (Studio → KI → „⭐ Als Standard nutzen"), der Standard greift sonst nur bei Neuinstallation
+243. `ANLEITUNG-AUSSERHALB-WLAN.md`: Tailscale **direkt auf dem Server per SSH** als empfohlener Weg ergänzt (inkl. Tabelle „was muss wo installiert werden"). Grund: Ollama läuft als eigene ZimaOS-App außerhalb des bisher dokumentierten Docker-Sidecars und wäre über diesen möglicherweise gar nicht erreichbar. Der Sidecar-Weg bleibt als Alternative ohne SSH bestehen
+244. `BACKEND-FAHRPLAN.md` *(neu)*: vollständiger Fahrplan für ein echtes Supabase-Backend (Datenmodell, RLS, Umbauschritte, Kosten) — **bewusst nicht umgesetzt**, gedacht für die Zeit nach der Einreichung. Kernaussage: Der kostenlose Tarif reicht bei Weitem, die Hürde ist Zeit, nicht Geld

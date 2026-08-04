@@ -15,7 +15,7 @@
 #      Netzwerk muss "host" sein, Ports-Liste bleibt LEER — das ist richtig so!
 #   3. VORHER unten dein EXPO_TOKEN wieder eintragen (von expo.dev).
 #   4. Starten. Studio: http://192.168.68.10:3000
-#   5. EINMALIG: Studio → Tab "KI" → "qwen2.5:7b" (⭐) installieren (~4,7 GB).
+#   5. EINMALIG: Studio → Tab "KI" → "qwen2.5:3b" (⭐) installieren (~1,9 GB).
 #      OHNE dieses Modell kann die KI nicht antworten!
 #   6. Handy-Apps: falls Port-Meldung kommt, im Studio auf der App-Karte den
 #      Port auf einen freien ändern (z. B. 8047 / 8046 / 8045).

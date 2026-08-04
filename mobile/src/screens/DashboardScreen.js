@@ -24,7 +24,7 @@ function ClinicChatList({ chats, labels, navigation }) {
     <Card pad={false}>
       {chats.map((c, i) => {
         const last = c.messages[c.messages.length - 1];
-        const lastText = last ? (last.type === 'note' ? 'Abschlussnotiz' : last.type === 'image' ? '📷 Bild' : last.text) : 'Noch keine Nachricht';
+        const lastText = last ? (last.deleted ? 'Nachricht gelöscht' : last.type === 'note' ? 'Abschlussnotiz' : last.type === 'image' ? '📷 Bild' : last.type === 'file' ? '📎 ' + (last.fileName || 'Datei') : last.text) : 'Noch keine Nachricht';
         return (
           <TouchableOpacity key={c.id} activeOpacity={0.7} onPress={() => navigation.navigate('ChatThread', { chatId: c.id, quickReplies: ['Gerne, kommen Sie vorbei.', 'Bitte kurz anrufen.', 'Wir melden uns gleich.'] })}
             style={[{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 13 }, i > 0 && { borderTopWidth: 1, borderTopColor: C.line2 }]}>
@@ -141,6 +141,9 @@ function StatusTab({ s, practices }) {
 export default function DashboardScreen({ navigation }) {
   const { data: D } = useAppState();
   const { visibleChats, labels } = useChats();
+  /* Praxis-Posteingang: nur die Chats der Rubrik 'clinic' — Netzwerk-Chats
+     gehören in die Chats-Übersicht, nicht ins Dashboard. */
+  const clinicChats = React.useMemo(() => visibleChats.filter((c) => c.role === 'clinic'), [visibleChats]);
   const me = D.PRACTICES[0];
   const DURATION = 24 * 3600 * 1000;
 

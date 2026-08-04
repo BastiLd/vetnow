@@ -98,6 +98,8 @@ export function toAiMessages(messages, fromRole, userText, limit = 10) {
   const out = [];
   const recent = messages.slice(-limit);
   for (const m of recent) {
+    if (m.deleted) continue; // gelöschte Nachrichten nie an die KI schicken
+    if (m.type === 'file') { out.push({ role: m.from === fromRole ? 'assistant' : 'user', content: '[Datei gesendet: ' + (m.fileName || 'Anhang') + ']' + (m.text ? ' ' + m.text : '') }); continue; }
     if (m.type === 'note') { out.push({ role: 'assistant', content: '[Abschlussnotiz] ' + (m.text || '') }); continue; }
     if (m.type === 'image') { out.push({ role: m.from === fromRole ? 'assistant' : 'user', content: '[Bild gesendet]' + (m.text ? ' ' + m.text : '') }); continue; }
     out.push({ role: m.from === fromRole ? 'assistant' : 'user', content: m.text || '' });

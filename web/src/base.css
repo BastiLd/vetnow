@@ -468,31 +468,62 @@ input, textarea, select { font-family: inherit; }
 .convo-item:hover { background: var(--surface-3); }
 .convo-item.is-on { background: var(--surface); border-left-color: var(--teal-600); }
 .convo-avatar { width: 42px; height: 42px; border-radius: 50%; flex: none; display: grid; place-items: center; background: var(--teal-50); color: var(--teal-700); }
-.convo-main { flex: 1; min-width: 0; }
-.convo-name { font-size: 14.5px; font-weight: 650; color: var(--ink); display: flex; align-items: center; gap: 7px; }
-.convo-snippet { font-size: 12.5px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+.convo-main { flex: 1; min-width: 0; overflow: hidden; }
+.convo-name { font-size: 14.5px; font-weight: 650; color: var(--ink); display: flex; align-items: center; gap: 7px; min-width: 0; }
+/* Der Titel ist ein eigenes Element, damit er im Flex-Container kürzbar ist —
+   als nackter Textknoten könnte er nicht unter seine Inhaltsbreite schrumpfen. */
+.convo-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* display:block ist hier PFLICHT: auf einem reinen Inline-Element (<span>)
+   wirken overflow/text-overflow laut CSS-Spezifikation nicht — der Text lief
+   dadurch aus der Karte heraus und in den Pfeil-Button hinein. */
+.convo-snippet { display: block; font-size: 12.5px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
 .convo-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex: none; }
 .convo-date { font-size: 11.5px; color: var(--ink-3); }
 .unread-dot { background: var(--teal-600); color: #fff; font-size: 11px; font-weight: 700; border-radius: 999px; min-width: 19px; height: 19px; padding: 0 5px; display: inline-grid; place-items: center; }
 
 .chat-thread { display: flex; flex-direction: column; min-width: 0; }
 .chat-head { padding: 14px var(--s5); border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 12px; }
-.chat-scroll { flex: 1; overflow-y: auto; padding: var(--s5); display: flex; flex-direction: column; gap: 12px; background: var(--surface-2); }
-.bubble-row { display: flex; gap: 9px; max-width: 78%; }
+.chat-head-main { flex: 1; min-width: 0; }
+.chat-head-main .chat-head-title { font-weight: 700; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-head-main .vn-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-scroll { flex: 1; overflow-y: auto; overflow-x: hidden; padding: var(--s5); display: flex; flex-direction: column; gap: 12px; background: var(--surface-2); }
+/* align-self ist der Gegenpart zu .me — ohne ihn streckt der Flex-Container
+   (align-items: stretch) die Zeile der Gegenseite bis auf volle max-width. */
+.bubble-row { display: flex; gap: 9px; max-width: 78%; align-self: flex-start; min-width: 0; }
 .bubble-row.me { align-self: flex-end; flex-direction: row-reverse; }
 .bubble-av { width: 28px; height: 28px; border-radius: 50%; flex: none; display: grid; place-items: center; align-self: flex-end; }
 .bubble-av.owner { background: var(--surface-3); color: var(--ink-3); }
 .bubble-av.clinic { background: var(--teal-600); color: #fff; }
-.bubble { padding: 10px 14px; font-size: 14px; line-height: 1.45; border-radius: 16px; }
+.bubble-col { min-width: 0; max-width: 100%; }
+.bubble-line { display: flex; align-items: flex-start; gap: 6px; min-width: 0; max-width: 100%; }
+.bubble-row.me .bubble-line { justify-content: flex-end; }
+/* overflow-wrap: eine lange ununterbrochene Zeichenkette (Link, Dateiname,
+   Token) würde die Blase sonst über den Kartenrand hinaus aufspannen. */
+.bubble { padding: 10px 14px; font-size: 14px; line-height: 1.45; border-radius: 16px; max-width: 100%; min-width: 0; overflow-wrap: anywhere; word-break: break-word; }
 .bubble.owner { background: var(--surface-3); color: var(--ink); border-bottom-left-radius: 5px; }
 .bubble.clinic { background: var(--teal-600); color: #fff; border-bottom-right-radius: 5px; }
 .bubble-time { font-size: 11px; color: var(--ink-3); margin-top: 4px; }
 .bubble-row.me .bubble-time { text-align: right; }
+
+/* ---- Reaktions-Badge (WhatsApp-Look: sitzt auf der unteren Blasenkante) ---- */
+.bubble-wrap { position: relative; display: inline-block; max-width: 100%; min-width: 0; }
+.bubble-wrap.has-reaction { margin-bottom: 9px; }
+.reaction-badge {
+  position: absolute; bottom: -9px; display: inline-flex; align-items: center; gap: 3px;
+  background: var(--surface); border: 2px solid var(--surface-2); border-radius: 999px;
+  padding: 0 5px; height: 20px; font-size: 12px; line-height: 1; white-space: nowrap;
+  box-shadow: var(--sh-1); z-index: 1;
+}
+.reaction-badge.on-right { right: 8px; }
+.reaction-badge.on-left { left: 8px; }
 .chat-compose { padding: 12px var(--s4); border-top: 1px solid var(--line); display: flex; gap: 10px; align-items: center; background: var(--surface); }
 .chat-compose .input { flex: 1; border-radius: var(--r-pill); padding: 12px 18px; }
 .chat-send { width: 48px; height: 48px; border-radius: 50%; flex: none; background: var(--teal-600); color: #fff; border: 0; display: grid; place-items: center; }
 .chat-send:hover { background: var(--teal-700); }
 .chat-empty { display: grid; place-items: center; height: 100%; color: var(--ink-3); text-align: center; padding: 40px; }
+/* Breitenbegrenzung direkt am Panel, damit Liste und Thread im breiten
+   Praxis-Dashboard genauso aussehen wie auf der schmalen Chats-Seite. */
+.chat-panel { max-width: 720px; }
 
 /* ---------- Calendar / Termine ---------- */
 .week-strip { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
@@ -690,7 +721,10 @@ input, textarea, select { font-family: inherit; }
 .expire-reminder .er-time { font-weight: 800; font-variant-numeric: tabular-nums; }
 
 /* chat image bubble */
-.bubble-img { padding: 4px; border-radius: 16px; max-width: 240px; }
+.bubble-file { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; max-width: 100%; }
+.bubble-file svg { flex: none; }
+.bubble-file .bf-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bubble-img { padding: 4px; border-radius: 16px; max-width: min(240px, 100%); }
 .bubble-img.clinic { background: var(--teal-600); border-bottom-right-radius: 5px; }
 .bubble-img.owner { background: var(--surface-3); border-bottom-left-radius: 5px; }
 .bubble-img img { display: block; width: 100%; border-radius: 12px; max-height: 220px; object-fit: cover; }

@@ -1,7 +1,7 @@
 /* VetNow — App root: router, top bar, legal footer */
 import React from 'react';
-import { VNIcon, AccountChip, ToastHost } from './components.jsx';
-import { useVNData } from './lib/adminContext.jsx';
+import { VNIcon, AccountChip, ToastHost, toast } from './components.jsx';
+import { useAdmin } from './lib/adminContext.jsx';
 import { useChats } from './lib/chats.jsx';
 import { ScreenHome, ScreenSearch } from './screens-a.jsx';
 import { ScreenResults, ScreenDetail } from './screens-b.jsx';
@@ -35,7 +35,7 @@ function Brand() {
   );
 }
 
-function TopBar({ route, nav, auth }) {
+function TopBar({ route, nav, auth, onLogout }) {
   const meta = SCREEN_META[route.name];
   const loggedIn = auth && auth.role;
   if (route.name === 'home') {
@@ -46,7 +46,7 @@ function TopBar({ route, nav, auth }) {
           <button className="vn-back m-hide" onClick={() => nav('owner-messages')} aria-label="Meine Nachrichten" style={{ color: 'var(--teal-700)' }}><VNIcon.chat s={20} /></button>
           {loggedIn && auth.role === 'clinic' && <button className="btn btn-secondary btn-sm m-hide" onClick={() => nav('dashboard')}>Dashboard</button>}
           {loggedIn
-            ? <AccountChip auth={auth} onClick={() => nav(auth.role === 'clinic' ? 'dashboard' : 'owner-messages')} />
+            ? <AccountChip auth={auth} onLogout={onLogout} onClick={() => nav(auth.role === 'clinic' ? 'dashboard' : 'owner-messages')} />
             : <button className="btn btn-secondary btn-sm" onClick={() => nav('auth')}>Anmelden</button>}
         </div>
       </header>
@@ -60,7 +60,7 @@ function TopBar({ route, nav, auth }) {
         {meta.sub && <div className="vn-topbar-sub">{meta.sub}</div>}
       </div>
       {loggedIn
-        ? <AccountChip auth={auth} onClick={() => nav(auth.role === 'clinic' ? 'dashboard' : 'owner-messages')} />
+        ? <AccountChip auth={auth} onLogout={onLogout} onClick={() => nav(auth.role === 'clinic' ? 'dashboard' : 'owner-messages')} />
         : (route.name !== 'dashboard' && <button className="vn-back" onClick={() => nav('home')} aria-label="Start" style={{ color: 'var(--teal-700)' }}><VNIcon.paw2 s={20} /></button>)}
     </header>
   );
@@ -120,12 +120,18 @@ function LegalFooter({ nav }) {
 export default function App({ initialScreen, initialId }) {
   const [route, setRoute] = React.useState({ name: initialScreen || 'home', practiceId: initialId });
   const [filters, setFilters] = React.useState({ animals: [], situations: [], districts: [], specialties: [], onlyConfirmed: false, onlyGreen: false, housecall: false, is24h: false });
-  const [auth, setAuth] = React.useState({ role: null, name: '' });
+  const { auth, setAuth } = useAdmin();
   const bodyRef = React.useRef(null);
 
   const nav = (name, opts) => {
     setRoute({ name: name || 'home', ...(opts || {}) });
     if (bodyRef.current) bodyRef.current.scrollTop = 0;
+  };
+
+  const handleLogout = () => {
+    setAuth({ role: null, name: '' });
+    nav('home');
+    toast('Abgemeldet.', 'info');
   };
 
   // KI-Agent steuert die App über Events (sichtbare Navigation + Filter setzen)
@@ -151,7 +157,7 @@ export default function App({ initialScreen, initialId }) {
     case 'detail':    screen = <ScreenDetail nav={nav} practiceId={route.practiceId} />; break;
     case 'request':   screen = <ScreenRequest nav={nav} filters={filters} practiceId={route.practiceId} auth={auth} />; break;
     case 'dashboard': screen = <ScreenDashboard nav={nav} />; break;
-    case 'owner-messages': screen = <ScreenChats />; break;
+    case 'owner-messages': screen = <ScreenChats nav={nav} />; break;
     case 'auth':      screen = <ScreenAuth nav={nav} />; break;
     case 'login':     screen = <ScreenLogin nav={nav} setAuth={setAuth} />; break;
     case 'register-owner':  screen = <ScreenRegisterOwner nav={nav} setAuth={setAuth} />; break;
@@ -163,7 +169,7 @@ export default function App({ initialScreen, initialId }) {
 
   return (
     <div className="vn-viewport">
-      {!chromeless && <TopBar route={route} nav={nav} auth={auth} />}
+      {!chromeless && <TopBar route={route} nav={nav} auth={auth} onLogout={handleLogout} />}
       <div className={'vn-body' + (showBottomNav ? ' has-bottomnav' : '')} ref={bodyRef}>
         {screen}
         {showFooter && <LegalFooter nav={nav} />}

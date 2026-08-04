@@ -1,10 +1,12 @@
 /* VetNow — Screens E: Tab-Dashboard (Status/Nachrichten/Termine/Profil),
    Chat-Komponente (mit Abschlussnotiz & Feedback) & Tierhalter-Nachrichten */
 import React from 'react';
-import { VNIcon, StatusBadge, Switch, Tooltip, AnimalGlyph, toast, StarRating } from './components.jsx';
-import { ANIMAL_LABEL, DISTRICTS, SPECIALTIES } from './data.js';
+import { VNIcon, StatusBadge, Switch, Tooltip, toast } from './components.jsx';
+import { DISTRICTS, SPECIALTIES } from './data.js';
 import { useVNData } from './lib/adminContext.jsx';
+import { useChats } from './lib/chats.jsx';
 import { CalendarPanel } from './screens-f.jsx';
+import { ChatsPanel } from './screens-chats.jsx';
 
 function pad2(n) { return String(n).padStart(2, '0'); }
 
@@ -21,161 +23,6 @@ const ChatDisclaimer = () => (
     <div>Keine medizinische Beratung. Bei akuten Notfällen bitte immer zusätzlich telefonisch Kontakt aufnehmen.</div>
   </div>
 );
-
-/* ---------- Reusable chat ---------- */
-export function ChatView({ convos, me, layout, store: extStore, setStore: extSet, feedback }) {
-  const [intStore, setIntStore] = React.useState(() => Object.fromEntries(convos.map((c) => [c.id, c.messages])));
-  const store = extStore || intStore;
-  const setStore = extSet || setIntStore;
-  const [sel, setSel] = React.useState(convos[0] ? convos[0].id : null);
-  const [draft, setDraft] = React.useState('');
-  const [pendingImg, setPendingImg] = React.useState(null);
-  const fileRef = React.useRef(null);
-  const [mobileThread, setMobileThread] = React.useState(false);
-  const scrollRef = React.useRef(null);
-
-  const active = convos.find((c) => c.id === sel);
-  const msgs = active ? (store[active.id] || []) : [];
-  const lastText = (c) => { const m = store[c.id] || []; const l = m[m.length - 1]; return l ? (l.type === 'note' ? 'Abschlussnotiz' : l.text) : ''; };
-
-  React.useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [msgs.length, sel]);
-
-  const append = (msg) => setStore((s) => ({ ...s, [active.id]: [...(s[active.id] || []), msg] }));
-  const send = () => {
-    if (!active) return;
-    if (pendingImg) { append({ from: me, type: 'image', src: pendingImg, text: draft.trim(), time: 'jetzt' }); setPendingImg(null); setDraft(''); return; }
-    if (!draft.trim()) return;
-    append({ from: me, text: draft.trim(), time: 'jetzt' }); setDraft('');
-  };
-  const onPickFile = (e) => {
-    const file = e.target.files && e.target.files[0]; if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => { setPendingImg(reader.result); toast('Bild bereit zum Senden.', 'info'); };
-    reader.readAsDataURL(file);
-    e.target.value = '';
-  };
-  const avatarIcon = (from) => from === 'clinic' ? <VNIcon.phone s={14} /> : <VNIcon.paw2 s={14} />;
-
-  const hasNote = msgs.some((m) => m.type === 'note');
-  const lastIsOwnerReply = msgs.length && msgs[msgs.length - 1].from === 'owner' && msgs[msgs.length - 1].type !== 'note';
-  const showFeedback = feedback && me === 'owner' && hasNote && !lastIsOwnerReply;
-
-  const list = (
-    <div className="convo-list">
-      {convos.map((c) => {
-        const m = store[c.id] || [];
-        return (
-          <button key={c.id} className={'convo-item' + (c.id === sel ? ' is-on' : '')}
-            onClick={() => { setSel(c.id); setMobileThread(true); }}>
-            <span className="convo-avatar"><AnimalGlyph animal={c.animal} s={20} /></span>
-            <span className="convo-main">
-              <span className="convo-name">{c.title}</span>
-              <span className="convo-snippet">{c.sub} · {lastText(c)}</span>
-            </span>
-            <span className="convo-meta">
-              <span className="convo-date">{c.date}</span>
-              {c.unread > 0 && <span className="unread-dot">{c.unread}</span>}
-            </span>
-          </button>
-        );
-      })}
-    </div>
-  );
-
-  const thread = active ? (
-    <div className="chat-thread">
-      <div className="chat-head">
-        {layout === 'split' && <button className="vn-back m-show" onClick={() => setMobileThread(false)} style={{ width: 36, height: 36 }}><VNIcon.back s={18} /></button>}
-        <span className="convo-avatar" style={{ width: 38, height: 38 }}><AnimalGlyph animal={active.animal} s={18} /></span>
-        <div>
-          <div style={{ fontWeight: 700, fontSize: 15 }}>{active.title}</div>
-          <div className="vn-meta">{active.sub}</div>
-        </div>
-      </div>
-      <div className="chat-scroll" ref={scrollRef}>
-        {msgs.map((m, i) => {
-          if (m.type === 'note') return (
-            <div key={i} className="note-msg">
-              <div className="note-box">
-                <span className="note-ic"><VNIcon.note s={16} /></span>
-                <div>
-                  <div className="note-label">Abschlussnotiz der Praxis</div>
-                  {m.text}
-                  <div className="note-time">{m.time}</div>
-                </div>
-              </div>
-            </div>
-          );
-          if (m.type === 'image') return (
-            <div key={i} className={'bubble-row' + (m.from === me ? ' me' : '')}>
-              <span className={'bubble-av ' + m.from}>{avatarIcon(m.from)}</span>
-              <div>
-                <div className={'bubble-img ' + m.from}>
-                  <img src={m.src} alt="Anhang" />
-                  {m.text && <div className="cap">{m.text}</div>}
-                </div>
-                <div className="bubble-time">{m.time}</div>
-              </div>
-            </div>
-          );
-          return (
-            <div key={i} className={'bubble-row' + (m.from === me ? ' me' : '')}>
-              <span className={'bubble-av ' + m.from}>{avatarIcon(m.from)}</span>
-              <div>
-                <div className={'bubble ' + m.from}>{m.text}</div>
-                <div className="bubble-time">{m.time}</div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      {showFeedback && (
-        <div className="feedback-bar">
-          <span className="fb-label">Rückmeldung geben:</span>
-          <button className="quick-reply" onClick={() => { append({ from: 'owner', text: 'Danke für die Rückmeldung!', time: 'jetzt' }); toast('Antwort gesendet.', 'success'); }}>Danke!</button>
-          <StarRating value={0} onChange={(n) => { append({ from: 'owner', text: 'Bewertung: ' + '★'.repeat(n) + ' (' + n + '/5)', time: 'jetzt' }); toast('Vielen Dank für Ihre Bewertung!', 'success'); }} />
-        </div>
-      )}
-      {pendingImg && (
-        <div className="img-preview">
-          <img src={pendingImg} alt="Vorschau" />
-          <span className="vn-meta">Bild angehängt</span>
-          <button className="vn-back ip-x" style={{ width: 32, height: 32 }} onClick={() => setPendingImg(null)} aria-label="Entfernen"><VNIcon.x s={16} /></button>
-        </div>
-      )}
-      <div className="chat-compose">
-        <input type="file" accept="image/*" ref={fileRef} onChange={onPickFile} style={{ display: 'none' }} />
-        <button className="chat-attach" onClick={() => fileRef.current && fileRef.current.click()} aria-label="Bild anhängen" title="Bild anhängen"><VNIcon.camera s={20} /></button>
-        <input className="input" value={draft} placeholder={pendingImg ? 'Bildunterschrift (optional) …' : 'Nachricht schreiben …'}
-          onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && send()} />
-        <button className="chat-send" onClick={send} aria-label="Senden"><VNIcon.send s={18} /></button>
-      </div>
-    </div>
-  ) : <div className="chat-empty">Wählen Sie eine Konversation.</div>;
-
-  if (layout === 'stack') {
-    return (
-      <div className="stack-4">
-        <div className="card" style={{ overflow: 'hidden' }}>{list}</div>
-        <div className="card" style={{ overflow: 'hidden', minHeight: 420, display: 'flex', flexDirection: 'column' }}>{thread}</div>
-      </div>
-    );
-  }
-  return (
-    <div className={'chat-split ' + (mobileThread ? 'show-thread' : 'show-list')}>
-      {list}
-      {thread}
-    </div>
-  );
-}
-
-function clinicConvosMeta(conversations) {
-  return conversations.map((c) => ({
-    id: c.id, title: c.owner, sub: ANIMAL_LABEL[c.animal], animal: c.animal, date: c.date, unread: c.unread,
-  }));
-}
 
 /* ---------- Dashboard panels ---------- */
 function StatusPanel({ s }) {
@@ -282,12 +129,14 @@ function StatusPanel({ s }) {
   );
 }
 
-function MessagesPanel({ store, setStore }) {
-  const D = useVNData();
+/* Nachrichten-Tab: exakt dieselbe Liste/Thread-Ansicht wie die Chats-Seite,
+   aus demselben Store (vn_chats_v1). Früher lag hier eine zweite, nicht
+   synchronisierte Chat-Implementierung auf D.CONVERSATIONS. */
+function MessagesPanel() {
   return (
     <div>
       <ChatDisclaimer />
-      <ChatView convos={clinicConvosMeta(D.CONVERSATIONS)} me="clinic" layout="split" store={store} setStore={setStore} />
+      <ChatsPanel title="Posteingang & Netzwerk" />
     </div>
   );
 }
@@ -529,7 +378,7 @@ function DashboardInner({ D, me }) {
   const [specialties, setSpecialties] = React.useState(() => Object.fromEntries((me.specialties || []).map((k) => [k, true])));
   const [specialtiesOther, setSpecialtiesOther] = React.useState('');
   const [absence, setAbsence] = React.useState({ active: false, from: '', to: '', vertretung: '' });
-  const [convoStore, setConvoStore] = React.useState(() => Object.fromEntries(D.CONVERSATIONS.map((c) => [c.id, c.messages])));
+  const { chats, addMessage, totalUnread } = useChats();
   const [appts, setAppts] = React.useState(() => {
     const m = {}; Object.entries(D.APPTS_BY_DATE).forEach(([k, v]) => { m[k] = v.map((a) => ({ ...a })); }); return m;
   });
@@ -550,11 +399,13 @@ function DashboardInner({ D, me }) {
   }, []);
 
   const setApptStatus = (dateIso, idx, status) => setAppts((m) => ({ ...m, [dateIso]: m[dateIso].map((a, i) => i === idx ? { ...a, status } : a) }));
+  /* Abschlussnotiz landet im ECHTEN Chat-Store, damit sie in der Chats-Ansicht
+     erscheint und einen Reload überlebt. */
   const completeAppt = (dateIso, idx, noteText) => {
     setAppts((m) => ({ ...m, [dateIso]: (m[dateIso] || []).map((a, i) => i === idx ? { ...a, status: 'done', note: noteText } : a) }));
     const a = (appts[dateIso] || [])[idx];
-    if (a && a.convoId) {
-      setConvoStore((s) => ({ ...s, [a.convoId]: [...(s[a.convoId] || []), { type: 'note', text: noteText, time: 'jetzt' }] }));
+    if (a && a.convoId && chats.some((c) => c.id === a.convoId)) {
+      addMessage(a.convoId, { type: 'note', text: noteText, time: 'jetzt' });
     }
   };
 
@@ -569,7 +420,7 @@ function DashboardInner({ D, me }) {
     about, setAbout, verification, setVerification, hoursWeek, setHoursWeek, team, setTeam, notifs, setNotifs,
   };
   const liveStatus = absence.active ? 'red' : (active ? picked : 'grey');
-  const unread = D.CONVERSATIONS.reduce((n, c) => n + c.unread, 0);
+  const unread = totalUnread;
 
   const tabs = [
     { key: 'status', label: 'Status', icon: 'siren' },
@@ -606,7 +457,7 @@ function DashboardInner({ D, me }) {
 
         <div>
           {tab === 'status' && <StatusPanel s={s} />}
-          {tab === 'messages' && <MessagesPanel store={convoStore} setStore={setConvoStore} />}
+          {tab === 'messages' && <MessagesPanel />}
           {tab === 'appts' && <AppointmentsPanel apptsByDate={appts} today={D.TODAY_ISO} onStatus={setApptStatus} onComplete={completeAppt} />}
           {tab === 'profile' && <ProfilePanel s={s} />}
         </div>
@@ -615,25 +466,9 @@ function DashboardInner({ D, me }) {
   );
 }
 
-/* ---------- Tierhalter: Meine Anfragen / Nachrichten ---------- */
-export function ScreenOwnerMessages() {
-  const D = useVNData();
-  const ownerConvos = D.OWNER_CONVERSATIONS;
-  return (
-    <div className="vn-page">
-      <div className="vn-page-wide d-narrow stack-4">
-        <div>
-          <h2 className="vn-h2">Meine Nachrichten</h2>
-          <p className="vn-text" style={{ marginTop: 6 }}>Ihre Anfragen und Konversationen mit Praxen.</p>
-        </div>
-        <ChatDisclaimer />
-        {ownerConvos.length === 0
-          ? <div className="card card-pad" style={{ textAlign: 'center' }}><p className="vn-text">Noch keine Nachrichten vorhanden.</p></div>
-          : <ChatView convos={ownerConvos} me="owner" layout="stack" feedback />}
-      </div>
-    </div>
-  );
-}
+/* ---------- Tierhalter-Nachrichten: siehe ScreenChats (screens-chats.jsx) ----------
+   Die frühere ScreenOwnerMessages lief auf einem zweiten, nicht persistierten
+   Datensatz und wurde durch den echten Chat-Store ersetzt. ---------- */
 
 /* ---------- Chrome-Extension: siehe screens-ext.jsx (ScreenExtension) ---------- */
 

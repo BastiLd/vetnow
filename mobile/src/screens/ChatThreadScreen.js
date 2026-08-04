@@ -2,15 +2,17 @@
    mit Header-Offset), Bild-Anhang, Abschlussnotizen, Sterne-Bewertung.
    Nutzt den neuen Chat-Store (useChats) über chatId. */
 import React from 'react';
-import { View, Text, TouchableOpacity, TextInput, ScrollView, Image, Animated, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, ScrollView, Image, Animated, Alert, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import { C, R } from '../theme';
 import { Meta, StarRating, toast } from '../components';
 import { VNIcon } from '../icons';
 import { Glyph } from './ChatsScreen';
 import { aiChat, vetSystemPrompt, toAiMessages } from '../lib/ai';
+import { botConversationReply, botGreetingText, botImageReply } from '../bot';
 import { useChats } from '../lib/ChatContext';
 
 /* Animierte 3-Punkte-Tippanzeige */
@@ -33,24 +35,74 @@ function TypingDots() {
   );
 }
 
+const hasReaction = (m) => Object.keys(m.reactions || {}).length > 0;
+
+/* WhatsApp-Look: ein kleines Badge, das auf der unteren Blasenkante sitzt
+   (max. eine Reaktion je Seite). Der Wrapper bekommt bei vorhandener Reaktion
+   unten Platz, damit das absolut positionierte Badge INNERHALB der
+   Wrapper-Grenzen bleibt — Android würde es sonst abschneiden. */
+function BubbleWrap({ m, mine, children }) {
+  const on = hasReaction(m);
+  return (
+    <View style={[st.bubbleWrap, on && st.bubbleWrapReact]}>
+      {children}
+      {on ? (
+        <View style={[st.reaction, mine ? { right: 8 } : { left: 8 }]}>
+          {Object.entries(m.reactions).map(([side, emoji]) => (
+            <Text key={side} style={{ fontSize: 12 }}>{emoji}</Text>
+          ))}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+/* Zeitzeile: Uhrzeit + optional „(bearbeitet)" + Herkunft der Antwort.
+   `source` ist optional — alte Nachrichten zeigen wie bisher nur die Zeit. */
+function messageStamp(m) {
+  return m.time
+    + (m.editedAt ? ' · (bearbeitet)' : '')
+    + (m.source === 'ai' ? ' · KI' : m.source === 'bot' ? ' · Bot' : '');
+}
+
 export default function ChatThreadScreen({ route, navigation }) {
   const { chatId, quickReplies } = route.params;
-  const { chatById, labels, addMessage, markRead, settings } = useChats();
+  const { chatById, labels, addMessage, markRead, settings, editMessage, deleteMessage, toggleReaction } = useChats();
   const chat = chatById(chatId);
   const me = chat && chat.role === 'owner' ? 'owner' : 'clinic';
   const other = me === 'owner' ? 'clinic' : 'owner';
   const [typing, setTyping] = React.useState(false);
   const handledRef = React.useRef('');
   const timersRef = React.useRef([]);
+  const botTimersRef = React.useRef([]);
 
   const [draft, setDraft] = React.useState('');
   const [pendingImg, setPendingImg] = React.useState(null);
+  const [editIdx, setEditIdx] = React.useState(null); // Index der Nachricht im Bearbeiten-Modus
   const scrollRef = React.useRef(null);
   const headerHeight = useHeaderHeight();
   const insets = useSafeAreaInsets();
 
   React.useEffect(() => { if (chat) markRead(chatId); }, [chatId]);
   React.useEffect(() => { if (chat) navigation.setOptions({ title: chat.title }); }, [chat && chat.title]);
+
+  /* Mehrteilige Bot-Antworten nacheinander senden. Bewusst NICHT über
+     timersRef: dessen Cleanup läuft schon beim nächsten Nachrichten-Update
+     und würde die zweite Nachricht verschlucken. Diese Timer werden nur beim
+     Chat-Wechsel/Verlassen abgeräumt. */
+  const sendBotTexts = (targetId, from, texts) => {
+    const list = (texts || []).filter(Boolean).slice(0, 3);
+    if (!list.length) { setTyping(false); return; }
+    list.forEach((tx, i) => {
+      const t = setTimeout(() => {
+        botTimersRef.current = botTimersRef.current.filter((x) => x !== t);
+        if (i === 0) setTyping(false);
+        addMessage(targetId, { from, text: tx, time: 'jetzt', source: 'bot' });
+      }, 450 + i * 950);
+      botTimersRef.current.push(t);
+    });
+  };
+  React.useEffect(() => () => { botTimersRef.current.forEach(clearTimeout); botTimersRef.current = []; }, [chatId]);
 
   // Auto-Antwort-Bot 2.0: reagiert, wenn die letzte Nachricht von MIR ist
   // (oder Chat leer → Begrüßung). Kann mehrteilige Antworten senden.
@@ -68,12 +120,12 @@ export default function ChatThreadScreen({ route, navigation }) {
     handledRef.current = sig;
 
     let alive = true;
-    const schedule = (fn, delay) => { const t = setTimeout(() => { if (alive) fn(); }, delay); timersRef.current.push(t); };
     const practiceName = chat.role === 'owner' ? chat.title : 'Tierarztpraxis Drautal';
 
-    // NUR KI — der alte Regel-Bot ist entfernt. Wenn Ollama nicht erreichbar
-    // ist, erscheint eine SICHTBARE Fehlermeldung im Chat (kein stilles
-    // Zurückfallen mehr — so ist immer klar, ob wirklich die KI antwortet).
+    // Zuerst die KI (Ollama über das Studio). Ist sie nicht erreichbar —
+    // z. B. bei einer Vorführung ohne Netz —, übernimmt der eingebaute
+    // Regel-Bot aus bot.js. Der Chat bleibt so nie stumm und zeigt nie eine
+    // technische Fehlermeldung.
     (async () => {
       try {
         if (settings.botTyping) setTyping(true);
@@ -84,15 +136,14 @@ export default function ChatThreadScreen({ route, navigation }) {
         const text = await aiChat({ messages: history, model: settings.aiModel, aiBaseUrl: settings.aiBaseUrl });
         if (!alive) return;
         setTyping(false);
-        addMessage(chat.id, { from: other, text, time: 'jetzt' });
-      } catch (e) {
+        addMessage(chat.id, { from: other, text, time: 'jetzt', source: 'ai' });
+      } catch {
         if (!alive) return;
-        setTyping(false);
-        addMessage(chat.id, {
-          from: other,
-          text: '⚠️ KI NICHT ERREICHBAR — keine Antwort möglich. (' + (e && e.message ? e.message : 'Fehler') + ') Prüfe: Läuft Ollama auf dem Server? Ist das Modell installiert (Studio → KI)? Ist das Handy im selben Netz (WLAN/Tailscale)?',
-          time: 'jetzt',
-        });
+        let texts;
+        if (isGreeting) texts = [botGreetingText(other, practiceName)];
+        else if (lastM && lastM.type === 'image') texts = [botImageReply(other)];
+        else texts = botConversationReply({ messages: arr, userText: (lastM && lastM.text) || '', fromRole: other, practiceName }).texts;
+        sendBotTexts(chat.id, other, texts);
       }
     })();
 
@@ -113,6 +164,10 @@ export default function ChatThreadScreen({ route, navigation }) {
 
   const send = (text) => {
     const t = (text != null ? text : draft).trim();
+    if (editIdx != null && text == null) {
+      if (!t) { toast('Text darf nicht leer sein.', 'error'); return; }
+      editMessage(chatId, editIdx, t); setEditIdx(null); setDraft(''); toast('Nachricht bearbeitet.', 'success'); return;
+    }
     if (pendingImg && text == null) { addMessage(chatId, { from: me, type: 'image', src: pendingImg, text: t, time: 'jetzt' }); setPendingImg(null); setDraft(''); return; }
     if (!t) return;
     addMessage(chatId, { from: me, text: t, time: 'jetzt' });
@@ -120,10 +175,62 @@ export default function ChatThreadScreen({ route, navigation }) {
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 60);
   };
 
+  const cancelEdit = () => { setEditIdx(null); setDraft(''); };
+
+  /* Langes Drücken auf eine Blase → Menü. Bewusst das im Projekt schon
+     genutzte Alert-Mehrknopf-Muster (wie ChatsScreen), keine neue Komponente. */
+  const REACTIONS = ['👍', '❤️', '😂', '😮'];
+  const openMsgMenu = (m, i) => {
+    if (m.deleted || m.type === 'note') return;
+    const mine = m.from === me;
+    const opts = [{
+      text: 'Reagieren', onPress: () => Alert.alert('Reaktion', 'Womit möchten Sie reagieren?', [
+        ...REACTIONS.map((e) => ({ text: e, onPress: () => toggleReaction(chatId, i, me, e) })),
+        { text: 'Abbrechen', style: 'cancel' },
+      ]),
+    }];
+    if (mine && !m.type) opts.push({ text: 'Bearbeiten', onPress: () => { setEditIdx(i); setDraft(m.text || ''); } });
+    if (mine) {
+      opts.push({
+        text: 'Löschen', style: 'destructive', onPress: () => Alert.alert('Nachricht löschen?', 'Der Inhalt wird entfernt.', [
+          { text: 'Abbrechen', style: 'cancel' },
+          { text: 'Löschen', style: 'destructive', onPress: () => { deleteMessage(chatId, i); if (editIdx === i) cancelEdit(); toast('Nachricht gelöscht.', 'info'); } },
+        ]),
+      });
+    }
+    opts.push({ text: 'Abbrechen', style: 'cancel' });
+    Alert.alert('Nachricht', mine ? 'Ihre Nachricht' : 'Nachricht der Gegenseite', opts);
+  };
+
   const pickImage = async () => {
     const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.6 });
     if (!res.canceled && res.assets && res.assets[0]) { setPendingImg(res.assets[0].uri); toast('Bild bereit zum Senden.', 'info'); }
   };
+
+  /* Kamera: braucht kein zusätzliches Paket, aber zur Laufzeit die Erlaubnis.
+     Die Berechtigung selbst kommt aus dem Config-Plugin in app.json und ist
+     erst nach einem NEUEN nativen Build (EAS) im Manifest. */
+  const takePhoto = async () => {
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) { toast('Kamera-Zugriff nicht erlaubt.', 'error'); return; }
+    const res = await ImagePicker.launchCameraAsync({ quality: 0.6 });
+    if (!res.canceled && res.assets && res.assets[0]) { setPendingImg(res.assets[0].uri); toast('Foto bereit zum Senden.', 'info'); }
+  };
+
+  const pickFile = async () => {
+    const res = await DocumentPicker.getDocumentAsync({ copyToCacheDirectory: true });
+    if (res.canceled || !res.assets || !res.assets[0]) return;
+    const f = res.assets[0];
+    addMessage(chatId, { from: me, type: 'file', src: f.uri, fileName: f.name || 'Datei', fileMime: f.mimeType || '', text: '', time: 'jetzt' });
+    toast('Datei gesendet.', 'success');
+  };
+
+  const openAttach = () => Alert.alert('Anhang', 'Was möchten Sie anhängen?', [
+    { text: '📷 Kamera', onPress: takePhoto },
+    { text: '🖼️ Galerie', onPress: pickImage },
+    { text: '📎 Datei', onPress: pickFile },
+    { text: 'Abbrechen', style: 'cancel' },
+  ]);
 
   const hasNote = msgs.some((m) => m.type === 'note');
   const last = msgs[msgs.length - 1];
@@ -134,11 +241,11 @@ export default function ChatThreadScreen({ route, navigation }) {
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: C.surface2 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={headerHeight}>
       <View style={st.subHead}>
         <View style={[st.avatar, { backgroundColor: chat.color + '22' }]}><Glyph name={chat.icon} s={18} c={chat.color} /></View>
-        <View style={{ flex: 1 }}>
-          <Text style={st.name}>{chat.title}</Text>
-          {chat.sub ? <Meta style={{ marginTop: 0 }}>{chat.sub}</Meta> : null}
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={st.name} numberOfLines={1}>{chat.title}</Text>
+          {chat.sub ? <Meta style={{ marginTop: 0 }} numberOfLines={1}>{chat.sub}</Meta> : null}
         </View>
-        <View style={{ flexDirection: 'row', gap: 5 }}>
+        <View style={{ flexDirection: 'row', gap: 5, flexShrink: 0 }}>
           {chatLabels.slice(0, 2).map((l) => (
             <View key={l.id} style={{ backgroundColor: l.color + '22', borderRadius: R.pill, paddingVertical: 3, paddingHorizontal: 8 }}>
               <Text style={{ color: l.color, fontSize: 10.5, fontWeight: '700' }}>{l.name}</Text>
@@ -161,21 +268,56 @@ export default function ChatThreadScreen({ route, navigation }) {
             );
           }
           const mine = m.from === me;
-          if (m.type === 'image') {
+          if (m.deleted) {
             return (
-              <View key={i} style={{ alignItems: mine ? 'flex-end' : 'flex-start' }}>
-                <View style={[st.imgBubble, mine ? { borderBottomRightRadius: 4 } : { borderBottomLeftRadius: 4 }]}>
-                  <Image source={{ uri: m.src }} style={st.img} resizeMode="cover" />
-                  {m.text ? <Text style={st.imgCaption}>{m.text}</Text> : null}
+              <View key={i} style={[st.msgCol, { alignItems: mine ? 'flex-end' : 'flex-start' }]}>
+                <View style={st.bubbleWrap}>
+                  <View style={[st.bubble, st.bubbleDeleted]}><Text style={st.deletedText}>Nachricht gelöscht</Text></View>
                 </View>
                 <Meta style={{ marginTop: 2 }}>{m.time}</Meta>
               </View>
             );
           }
+          const stamp = messageStamp(m);
+          if (m.type === 'image') {
+            return (
+              <View key={i} style={[st.msgCol, { alignItems: mine ? 'flex-end' : 'flex-start' }]}>
+                <BubbleWrap m={m} mine={mine}>
+                  <TouchableOpacity activeOpacity={0.85} onLongPress={() => openMsgMenu(m, i)} delayLongPress={300}
+                    style={[st.imgBubble, mine ? { borderBottomRightRadius: 4 } : { borderBottomLeftRadius: 4 }]}>
+                    <Image source={{ uri: m.src }} style={st.img} resizeMode="cover" />
+                    {m.text ? <Text style={st.imgCaption}>{m.text}</Text> : null}
+                  </TouchableOpacity>
+                </BubbleWrap>
+                <Meta style={{ marginTop: 2 }}>{stamp}</Meta>
+              </View>
+            );
+          }
+          if (m.type === 'file') {
+            return (
+              <View key={i} style={[st.msgCol, { alignItems: mine ? 'flex-end' : 'flex-start' }]}>
+                <BubbleWrap m={m} mine={mine}>
+                  <TouchableOpacity activeOpacity={0.85} onLongPress={() => openMsgMenu(m, i)} delayLongPress={300} style={st.fileBubble}>
+                    <View style={st.fileIc}><VNIcon.note s={16} c={C.teal700} /></View>
+                    <View style={{ flexShrink: 1, minWidth: 0 }}>
+                      <Text style={st.fileName} numberOfLines={1}>{m.fileName || 'Datei'}</Text>
+                      {m.text ? <Text style={st.imgCaption} numberOfLines={2}>{m.text}</Text> : null}
+                    </View>
+                  </TouchableOpacity>
+                </BubbleWrap>
+                <Meta style={{ marginTop: 2 }}>{stamp}</Meta>
+              </View>
+            );
+          }
           return (
-            <View key={i} style={{ alignItems: mine ? 'flex-end' : 'flex-start' }}>
-              <View style={[st.bubble, mine ? st.bubbleMe : st.bubbleOther]}><Text style={[st.bubbleText, mine && { color: '#fff' }]}>{m.text}</Text></View>
-              <Meta style={{ marginTop: 2 }}>{m.time}</Meta>
+            <View key={i} style={[st.msgCol, { alignItems: mine ? 'flex-end' : 'flex-start' }]}>
+              <BubbleWrap m={m} mine={mine}>
+                <TouchableOpacity activeOpacity={0.85} onLongPress={() => openMsgMenu(m, i)} delayLongPress={300}
+                  style={[st.bubble, mine ? st.bubbleMe : st.bubbleOther, editIdx === i && { borderWidth: 2, borderColor: C.yellow }]}>
+                  <Text style={[st.bubbleText, mine && { color: '#fff' }]}>{m.text}</Text>
+                </TouchableOpacity>
+              </BubbleWrap>
+              <Meta style={{ marginTop: 2 }}>{stamp}</Meta>
             </View>
           );
         })}
@@ -200,6 +342,14 @@ export default function ChatThreadScreen({ route, navigation }) {
         </View>
       ) : null}
 
+      {editIdx != null ? (
+        <View style={st.preview}>
+          <VNIcon.pencil s={16} c={C.teal700} />
+          <Meta style={{ flex: 1, marginTop: 0 }}>Nachricht bearbeiten</Meta>
+          <TouchableOpacity onPress={cancelEdit} hitSlop={8}><VNIcon.x s={18} c={C.ink2} /></TouchableOpacity>
+        </View>
+      ) : null}
+
       {pendingImg ? (
         <View style={st.preview}>
           <Image source={{ uri: pendingImg }} style={st.previewImg} />
@@ -209,8 +359,8 @@ export default function ChatThreadScreen({ route, navigation }) {
       ) : null}
 
       <View style={[st.compose, { paddingBottom: Math.max(insets.bottom, 10) }]}>
-        <TouchableOpacity style={st.attach} onPress={pickImage} hitSlop={6}><VNIcon.camera s={20} c={C.ink2} /></TouchableOpacity>
-        <TextInput style={st.input} value={draft} onChangeText={setDraft} placeholder={pendingImg ? 'Bildunterschrift (optional) …' : 'Nachricht schreiben …'} placeholderTextColor={C.ink3} onSubmitEditing={() => send()} returnKeyType="send" blurOnSubmit={false} />
+        <TouchableOpacity style={st.attach} onPress={openAttach} hitSlop={6}><VNIcon.camera s={20} c={C.ink2} /></TouchableOpacity>
+        <TextInput style={st.input} value={draft} onChangeText={setDraft} placeholder={editIdx != null ? 'Nachricht bearbeiten …' : pendingImg ? 'Bildunterschrift (optional) …' : 'Nachricht schreiben …'} placeholderTextColor={C.ink3} onSubmitEditing={() => send()} returnKeyType="send" blurOnSubmit={false} />
         <TouchableOpacity style={st.sendBtn} onPress={() => send()}><VNIcon.send s={17} c="#fff" /></TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
@@ -221,11 +371,29 @@ const st = StyleSheet.create({
   subHead: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: C.surface, borderBottomWidth: 1, borderBottomColor: C.line2 },
   avatar: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   name: { fontSize: 14.5, fontWeight: '700', color: C.ink },
-  bubble: { maxWidth: '82%', borderRadius: 14, paddingVertical: 9, paddingHorizontal: 12 },
+  /* Die Breitenbegrenzung sitzt am Wrapper, nicht mehr an der Blase selbst —
+     sonst würde sich die Prozentangabe gegen den schrumpfenden Wrapper
+     auflösen statt gegen die Zeilenbreite. */
+  msgCol: { width: '100%' },
+  bubbleWrap: { maxWidth: '84%' },
+  bubbleWrapReact: { paddingBottom: 12 },
+  bubble: { borderRadius: 14, paddingVertical: 9, paddingHorizontal: 12 },
   bubbleMe: { backgroundColor: C.teal600, borderBottomRightRadius: 4 },
   bubbleOther: { backgroundColor: '#fff', borderWidth: 1, borderColor: C.line, borderBottomLeftRadius: 4 },
   bubbleText: { fontSize: 14.5, lineHeight: 20, color: C.ink },
-  imgBubble: { maxWidth: '75%', borderRadius: 14, overflow: 'hidden', backgroundColor: '#fff', borderWidth: 1, borderColor: C.line },
+  bubbleDeleted: { backgroundColor: C.surface3, borderWidth: 1, borderColor: C.line },
+  deletedText: { fontSize: 14, color: C.ink3, fontStyle: 'italic' },
+  /* Badge sitzt absolut auf der unteren Blasenkante (WhatsApp-Look). Der
+     2px-Rand in Hintergrundfarbe erzeugt den „ausgestanzten" Effekt. */
+  reaction: {
+    position: 'absolute', bottom: 0, flexDirection: 'row', gap: 2, alignItems: 'center',
+    height: 20, paddingHorizontal: 5, borderRadius: R.pill,
+    backgroundColor: C.surface, borderWidth: 2, borderColor: C.surface2,
+  },
+  fileBubble: { flexDirection: 'row', alignItems: 'center', gap: 9, borderRadius: 14, paddingVertical: 10, paddingHorizontal: 12, backgroundColor: '#fff', borderWidth: 1, borderColor: C.line },
+  fileIc: { width: 30, height: 30, borderRadius: 8, backgroundColor: C.teal50, alignItems: 'center', justifyContent: 'center' },
+  fileName: { fontSize: 13.5, fontWeight: '700', color: C.ink },
+  imgBubble: { borderRadius: 14, overflow: 'hidden', backgroundColor: '#fff', borderWidth: 1, borderColor: C.line },
   img: { width: 220, height: 160 },
   imgCaption: { fontSize: 13, color: C.ink2, padding: 8 },
   note: { backgroundColor: C.blueBg, borderRadius: 12, padding: 12, gap: 5 },

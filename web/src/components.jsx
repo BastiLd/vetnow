@@ -181,17 +181,34 @@ export function ToastHost() {
 export function toast(msg, type) { if (toastFn) toastFn(msg, type); }
 
 /* ---- Account avatar (eingeloggt) ---- */
-export function AccountChip({ auth, onClick }) {
+export function AccountChip({ auth, onClick, onLogout }) {
+  const [menu, setMenu] = React.useState(false);
   if (!auth || !auth.role) return null;
   const initials = (auth.name || (auth.role === 'clinic' ? 'Praxis' : 'Konto')).trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
   return (
-    <button className="acct-chip" onClick={onClick} title="Sie sind eingeloggt">
-      <span className="acct-av">{initials}</span>
-      <span className="acct-meta m-hide">
-        <span className="acct-role">{auth.role === 'clinic' ? 'Praxis' : 'Tierhalter:in'}</span>
-        <span className="acct-on"><span className="acct-dot"></span> eingeloggt</span>
-      </span>
-    </button>
+    <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+      <button className="acct-chip" onClick={onClick} title="Sie sind eingeloggt">
+        <span className="acct-av">{initials}</span>
+        <span className="acct-meta m-hide">
+          <span className="acct-role">{auth.role === 'clinic' ? 'Praxis' : 'Tierhalter:in'}</span>
+          <span className="acct-on"><span className="acct-dot"></span> eingeloggt</span>
+        </span>
+      </button>
+      {onLogout && (
+        <button className="vn-back" style={{ width: 32, height: 32 }} onClick={() => setMenu((o) => !o)} aria-label="Konto-Menü"><VNIcon.chevron s={16} /></button>
+      )}
+      {menu && (
+        <>
+          <div onClick={() => setMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 49 }} />
+          <div className="card card-pad" style={{ position: 'absolute', right: 0, top: 46, zIndex: 50, padding: 8, minWidth: 170, boxShadow: 'var(--sh-3)' }}>
+            <div className="vn-meta" style={{ padding: '2px 8px 6px' }}>{auth.name || (auth.role === 'clinic' ? 'Praxis' : 'Mein Konto')}</div>
+            <button className="btn btn-ghost btn-sm btn-block" style={{ justifyContent: 'flex-start' }} onClick={() => { setMenu(false); onLogout(); }}>
+              <VNIcon.logout s={15} /> Abmelden
+            </button>
+          </div>
+        </>
+      )}
+    </span>
   );
 }
 

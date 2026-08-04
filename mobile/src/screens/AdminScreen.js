@@ -1,6 +1,6 @@
 /* Admin: Login + Schalter "Testdaten ausblenden" (AsyncStorage, nur dieses Gerät) */
 import React from 'react';
-import { View, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { C, S } from '../theme';
 import { Card, Notice, Btn, Field, Input, SwitchRow, SectionLabel, H2, P, Meta, toast } from '../components';
 import { VNIcon } from '../icons';

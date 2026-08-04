@@ -2,6 +2,7 @@
    Navigation: Bottom-Tabs (Start / Suchen / Nachrichten / Konto) wie ein Dock,
    darüber ein Root-Stack für Chat-Threads und Admin (Zurück per Wisch-Geste). */
 import React from 'react';
+import { View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -128,12 +129,21 @@ function Nav() {
   );
 }
 
+/* AsyncStorage lädt asynchron. Bis Anmeldung und Chats gelesen sind, eine
+   leere Fläche zeigen — sonst blitzt beim Start kurz „abgemeldet" auf. */
+function Gate() {
+  const { ready } = useAppState();
+  const { ready: chatsReady } = useChats();
+  if (!ready || !chatsReady) return <View style={{ flex: 1, backgroundColor: C.surface2 }} />;
+  return <Nav />;
+}
+
 export default function App() {
   return (
     <AppStateProvider>
       <ChatProvider>
         <StatusBar style="dark" />
-        <Nav />
+        <Gate />
         <ToastHost />
       </ChatProvider>
     </AppStateProvider>

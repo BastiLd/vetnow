@@ -107,6 +107,26 @@ bekommst du einen **Link** und einen **QR-Code** zum Herunterladen der APK.
 
 > Sauber statt Demo? Dann in Schritt 6 `--profile preview-clean` verwenden.
 
+### Profil `preview-demo` — für Vorführungen unterwegs
+
+Die Profile `preview` und `preview-clean` haben die **Heim-IP** `192.168.68.10`
+fest eingebaut. Außerhalb des Heim-WLANs ist der KI-Server darüber nicht
+erreichbar; die App fällt dann automatisch auf den eingebauten Bot zurück
+(`mobile/src/bot.js`) — sie zeigt also **keine** Fehlermeldung mehr, antwortet
+aber ohne echte KI.
+
+Damit die echte KI auch unterwegs läuft, gibt es das Profil **`preview-demo`**.
+Dort steht in `mobile/eas.json` noch der Platzhalter
+`http://100.X.Y.Z:3000/api/ai` — **vor dem Bauen** durch die eigene
+Tailscale-Adresse des Servers ersetzen (die 100-er Adresse aus Teil B, Schritt B0/4):
+
+```bat
+eas build --platform android --profile preview-demo
+```
+
+Solange der Platzhalter drin steht, ist der Build trotzdem benutzbar — es
+antwortet dann eben der eingebaute Bot.
+
 ## A3) Die APK an deinen Freund geben
 
 - Öffne den Link/QR aus Schritt 6 auf dem **Pixel** deines Freundes (oder
@@ -147,14 +167,94 @@ dein iPhone und dein ZimaOS-Server sind damit so verbunden, als wärst du zu
 Hause im WLAN, **egal wo du gerade bist**. Dein normaler Studio-Ablauf (Expo
 starten → QR scannen) bleibt gleich.
 
-## B1) Was ich vorbereitet habe
+---
+
+## ⭐ B0) EMPFOHLENER WEG: Tailscale direkt auf dem Server (per SSH)
+
+**Kurz zur Verständnisfrage „was muss wo installiert werden?":**
+
+| Wo | Was | Warum |
+|----|-----|-------|
+| **Auf dem ZimaOS-Server** | Tailscale (per SSH installiert) | damit Studio **und** Ollama von außen erreichbar sind |
+| **Auf dem Vorführ-Handy** | Tailscale-App aus dem App Store / Play Store | damit das Handy überhaupt in dieses private Netz kommt |
+| **Einmal im Browser** | kostenloser Account auf tailscale.com | beide Geräte melden sich mit **demselben** Account an |
+
+Sonst nichts. Kein Portfreigeben im Router, keine feste IP, keine Kosten.
+
+**Warum nicht der Docker-Weg aus B1/B2?** Die Variante mit dem kleinen
+Tailscale-Container (`docker-compose.remote.yml`, `network_mode: service:tailscale`)
+hat eine Lücke: **Ollama läuft als eigene, separate ZimaOS-App** außerhalb dieses
+Containers. Der Sidecar sieht damit möglicherweise nur das Studio, nicht die KI —
+und genau die KI soll ja unterwegs antworten. Läuft Tailscale dagegen direkt auf dem
+Host, ist alles auf diesem Server automatisch mit im Tailnet.
+
+### Schritt für Schritt
+
+1. Per SSH auf den Server verbinden (in der Windows-Eingabeaufforderung oder PowerShell):
+
+```bash
+ssh benutzername@192.168.68.10
+```
+
+2. Tailscale auf dem Host installieren (ZimaOS ist Linux-basiert):
+
+```bash
+curl -fsSL https://tailscale.com/install.sh | sh
+```
+
+3. Anmelden — der Befehl zeigt einen Link, den du im Browser öffnest und mit deinem
+   tailscale.com-Account bestätigst:
+
+```bash
+sudo tailscale up
+```
+
+4. Die neue Adresse ablesen (beginnt mit `100.`):
+
+```bash
+tailscale ip -4
+```
+
+5. **Nichts an Docker ändern.** Die normale `docker-compose.yml` betreibt das Studio mit
+   `network_mode: host` — der Container sieht die neue Tailscale-Schnittstelle deshalb
+   automatisch mit. Ollama läuft auf demselben Host und ist über dieselbe Adresse
+   erreichbar.
+
+6. Für einen APK-Build, der **außerhalb** funktionieren soll: in `mobile/eas.json` beim
+   Profil `preview-demo` den Platzhalter `100.X.Y.Z` durch die Adresse aus Schritt 4
+   ersetzen und bauen:
+
+```bash
+eas build --platform android --profile preview-demo
+```
+
+7. Tailscale-App aufs Vorführ-Handy installieren, mit **demselben** Account anmelden,
+   und vor der Präsentation den Schalter einschalten.
+
+8. **Vor dem Wettbewerb testen (wichtig!):** Handy auf **mobile Daten**, WLAN **aus**,
+   Tailscale **an**, APK öffnen, im Chat eine Nachricht schreiben. Es muss eine Antwort
+   mit dem kleinen Zusatz **„· KI"** kommen. Steht dort **„· Bot"**, ist der Server nicht
+   erreichbar — dann läuft die Vorführung zwar trotzdem (der eingebaute Bot antwortet),
+   aber ohne echte KI.
+
+> Für dein iPhone mit Expo Go gilt dasselbe: Tailscale an, dann Studio unter
+> `http://100.x.y.z:3000` öffnen und wie gewohnt den QR-Code scannen.
+
+---
+
+## B1) Alternativweg ohne SSH: Tailscale als Docker-Sidecar
+
+Nur nötig, wenn du **keinen** SSH-Zugang zum Server hast. Sonst ist B0 einfacher und
+zuverlässiger.
+
+### Was ich vorbereitet habe
 
 Die Datei **`docker-compose.remote.yml`** im Projekt ist eine fertige
 Fernzugriff-Variante: Studio **+** ein kleiner Tailscale-Container in einem.
 Deine bisherige `docker-compose.yml` bleibt unangetastet und funktioniert
 weiter im LAN.
 
-## B2) Einrichtung (einmalig)
+### Einrichtung des Sidecar-Wegs (einmalig)
 
 1. Kostenloses Konto auf **https://tailscale.com** anlegen.
 2. **Auth-Key** erzeugen: Admin-Konsole → **Settings → Keys** →
@@ -171,7 +271,7 @@ weiter im LAN.
    `docker-compose.remote.yml` eintragen und die App in ZimaOS **einmal neu
    starten**.
 
-## B3) Nutzen
+### Nutzen
 
 - Studio öffnen: **http://100.x.y.z:3000** (die 100-er Adresse aus B2/6).
 - Wie gewohnt **Expo starten** → **QR** in Expo Go scannen.

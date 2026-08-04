@@ -95,3 +95,48 @@ Invoke-RestMethod -Method Put -Uri "http://${SERVER}:3000/api/settings" -Content
 ```
 
 Mehr musst du nicht ändern — die Apps nutzen automatisch das Studio-Standard-Modell.
+
+---
+
+## Nachtrag (Runde 2): Standard-Modell auf `qwen2.5:3b` umgestellt
+
+**Warum:** Der ZimaOS-Server hat **≤ 8 GB RAM insgesamt** — Betriebssystem, Docker,
+Studio und Expo laufen davon mit. `qwen2.5:7b` braucht allein für Ollama etwa 8 GB und
+ist auf dieser Maschine deshalb an der Grenze; typische Folge sind sehr lange Antwortzeiten
+oder ein abgebrochener Ollama-Prozess.
+
+Neuer Standard ist **`qwen2.5:3b`** (~1,9 GB Download, ~3 GB RAM): spürbar schneller,
+sprachlich für die Chat-Antworten immer noch gut. `qwen2.5:7b` bleibt im Modell-Katalog
+als Testoption — wenn er auf eurem Server flüssig läuft, jederzeit zurückschaltbar.
+
+### Umstellen auf einer BESTEHENDEN Installation
+
+Der neue Standard greift nur bei einer frischen Installation — eine schon gespeicherte
+Einstellung gewinnt. Deshalb einmalig eines von beidem:
+
+- **Im Studio (einfachster Weg):** Tab **KI** → bei `qwen2.5:3b` auf **„Herunterladen"**,
+  danach auf **„⭐ Als Standard nutzen"**.
+- **Oder per PowerShell:**
+
+```powershell
+$SERVER = "192.168.68.10"
+Invoke-RestMethod -Method Post -Uri "http://${SERVER}:11434/api/pull" -ContentType "application/json" -Body '{"name":"qwen2.5:3b"}' -TimeoutSec 3600
+Invoke-RestMethod -Method Put -Uri "http://${SERVER}:3000/api/settings" -ContentType "application/json" -Body '{"ollamaModel":"qwen2.5:3b"}'
+```
+
+### Danach kurz gegentesten
+
+Im Studio unter **KI → Schnelltest** zwei, drei typische Tierarzt-Fragen auf Deutsch
+stellen und die Antwortzeit mit `qwen2.5:7b` vergleichen. Behaltet das Modell mit dem
+besseren Verhältnis aus Tempo und Sprachqualität.
+
+> Die Feineinstellungen (`AI_OPTIONS` in `mobile/src/lib/ai.js` und `web/src/lib/ai.js`:
+> `temperature: 0.4`, `top_p: 0.9`, `num_ctx: 4096`, `repeat_penalty: 1.15`) waren auf das
+> 7B-Modell abgestimmt. Kleinere Modelle reagieren empfindlicher auf `temperature` —
+> falls die Antworten sprunghaft wirken, testweise auf `0.3` senken.
+
+### Woran erkennt man jetzt, ob die KI oder der Bot geantwortet hat?
+
+Seit Runde 2 steht das direkt an der Nachricht: unter jeder Antwort erscheint neben der
+Uhrzeit ein kleines **„· KI"** oder **„· Bot"**. Kommt bei einem Test überall „· Bot",
+ist Ollama nicht erreichbar — dann Server, Port und Modell prüfen.

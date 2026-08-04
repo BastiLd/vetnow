@@ -24,6 +24,15 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Erlaube VetNow Kärnten den Zugriff auf deine Fotos, um Bilder an Nachrichten anzuhängen.",
+          "cameraPermission": "Erlaube VetNow Kärnten den Zugriff auf die Kamera, um Fotos für Nachrichten aufzunehmen."
+        }
+      ]
+    ],
     "extra": {
       "eas": {
         "projectId": "a24f0f8b-5c86-4cc3-b10a-42785275b6c9"
