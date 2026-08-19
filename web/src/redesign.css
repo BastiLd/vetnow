@@ -357,8 +357,47 @@ html[data-frame="phone"] .vn-body:not(.has-bottomnav)::after { content: ''; disp
 .toast-host { bottom: calc(84px + var(--safe-bottom)); }
 .ext-stage { padding-top: calc(16px + var(--safe-top)); }
 
-/* Chat-Zeilen-Menü nicht abgeschnitten */
-.convo-list { overflow: visible; }
+/* ============================================================
+   Chat-Layout — Hoehenbegrenzung
+   Das Zeilen-Menue (drei Punkte) darf nicht abgeschnitten werden,
+   deshalb overflow: visible. Dann darf die Liste aber auch NICHT
+   mehr gedeckelt werden: base.css setzt `.card > .convo-list`
+   auf max-height: 240px — zusammen mit overflow: visible lief die
+   Liste unten aus der Karte heraus ueber den Rest der Seite.
+   Die Seite selbst scrollt, die Liste waechst mit.
+   ============================================================ */
+.convo-list { overflow: visible; max-height: none; }
+.stack .convo-list, .card > .convo-list { max-height: none; }
+
+/* Der geoeffnete Chat ist ein eigener Bildschirm: Kopf oben,
+   Verlauf scrollt in der Mitte, Eingabe bleibt immer sichtbar.
+   Ohne feste Hoehe wuchs die Karte mit jeder Nachricht weiter nach
+   unten und das Eingabefeld rutschte aus dem Bild. */
+.chat-thread-card {
+  display: flex; flex-direction: column; overflow: hidden;
+  height: calc(100dvh - 216px);
+  min-height: 380px;
+  max-height: 760px;
+}
+.chat-thread-card > .chat-head { flex: none; }
+.chat-thread-card > .chat-compose { flex: none; }
+.chat-thread-card > .chat-scroll {
+  flex: 1 1 0; min-height: 0; max-height: none; overflow-y: auto;
+  overscroll-behavior: contain;
+}
+@media (max-width: 879px) {
+  .chat-thread-card { height: calc(100dvh - 248px); min-height: 320px; }
+}
+@supports not (height: 100dvh) {
+  .chat-thread-card { height: calc(100vh - 216px); }
+  @media (max-width: 879px) { .chat-thread-card { height: calc(100vh - 248px); } }
+}
+
+/* Der Verlauf im Praxis-Dashboard steckt in derselben Karte —
+   auch dort nicht ueber den Rand hinaus. */
+.chat-split { min-height: 0; height: calc(100dvh - 216px); max-height: 760px; }
+.chat-split > .convo-list, .chat-split > .chat-thread { min-height: 0; }
+.chat-split > .convo-list { overflow-y: auto; max-height: none; }
 
 /* ============================================================
    KI-Agent: schwebender Button + Panel + Log
@@ -372,6 +411,12 @@ html[data-frame="phone"] .vn-body:not(.has-bottomnav)::after { content: ''; disp
   transition: transform .15s ease;
 }
 .agent-fab:hover { transform: scale(1.06); }
+
+/* Im geoeffneten Chat sass der Agent-Knopf genau auf dem Senden-Knopf.
+   Solange ein Chat offen ist, rueckt er ueber die Eingabezeile. */
+@media (max-width: 879px) {
+  body:has(.chat-thread-card) .agent-fab { bottom: calc(168px + var(--safe-bottom)); }
+}
 .agent-fab.running { animation: agent-glow 1.6s infinite; }
 @keyframes agent-glow {
   0%, 100% { box-shadow: 0 8px 24px rgba(12,125,114,.4); }

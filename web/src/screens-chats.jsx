@@ -398,7 +398,7 @@ function ChatThread({ chat, onBack, addMessage, labels, settings }) {
   return (
     <>
       <button className="btn btn-secondary btn-sm" onClick={onBack} style={{ marginBottom: 14 }}><VNIcon.back s={15} /> Alle Chats</button>
-      <div className="card" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 460 }}>
+      <div className="card chat-thread-card">
           <div className="chat-head">
             <span className="convo-avatar" style={{ width: 40, height: 40, background: chat.color + '22' }}><Icon name={chat.icon} s={20} c={chat.color} /></span>
             <div className="chat-head-main">
