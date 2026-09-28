@@ -10,7 +10,7 @@ import { withLiveStatus } from '../../../shared/status.js';
 import { APP_VERSION } from '../../../shared/version.js';
 
 const API = '/api/v1';
-const state = { status: 'off', practices: [], rev: 0, clockOffsetMs: 0, clientId: '', devices: 0, error: '' };
+const state = { status: 'off', practices: [], chats: [], typing: {}, rev: 0, clockOffsetMs: 0, clientId: '', devices: 0, error: '' };
 const listeners = new Set();
 let snapshot = { ...state };
 let es = null;
@@ -37,6 +37,7 @@ async function getJson(path, opts) {
 async function loadState() {
   const s = await getJson('/state');
   state.practices = s.practices || [];
+  state.chats = s.chats || [];
   state.rev = s.rev || 0;
   state.clockOffsetMs = s.clockOffsetMs || 0;
   emit();
@@ -87,6 +88,37 @@ function handle(ev) {
         if (i >= 0) state.practices[i] = ev.practice; else state.practices.push(ev.practice);
         state.practices = state.practices.slice();
       }
+      break;
+    case 'chat':
+      if (ev.chat) {
+        // Chat-Events kommen ohne Nachrichten → vorhandene Nachrichten behalten.
+        const i = state.chats.findIndex((c) => c.id === ev.chat.id);
+        const prev = i >= 0 ? state.chats[i] : null;
+        const next = { ...(prev || {}), ...ev.chat, messages: ev.chat.messages || (prev ? prev.messages : []) };
+        state.chats = i >= 0 ? state.chats.map((c, k) => (k === i ? next : c)) : [next, ...state.chats];
+      }
+      break;
+    case 'chat:deleted':
+      state.chats = state.chats.filter((c) => c.id !== ev.id);
+      break;
+    case 'message':
+    case 'message:update':
+      if (ev.chatId && ev.message) {
+        state.chats = state.chats.map((c) => {
+          if (c.id !== ev.chatId) return c;
+          const msgs = c.messages || [];
+          const j = msgs.findIndex((m) => m.id === ev.message.id || (ev.message.clientMsgId && m.clientMsgId === ev.message.clientMsgId));
+          const list = j >= 0 ? msgs.map((m, k) => (k === j ? ev.message : m)) : [...msgs, ev.message];
+          return { ...c, messages: list, updatedAt: Math.max(c.updatedAt || 0, ev.message.ts || 0) };
+        });
+        if (ev.type === 'message') state.typing = { ...state.typing, [ev.chatId]: null };
+      }
+      break;
+    case 'read':
+      state.chats = state.chats.map((c) => (c.id === ev.chatId ? { ...c, unread: { ...(c.unread || {}), [ev.side]: 0 } } : c));
+      break;
+    case 'typing':
+      state.typing = { ...state.typing, [ev.chatId]: ev.on ? ev.from : null };
       break;
     case 'resync':
       loadState().catch(() => {});
@@ -157,4 +189,26 @@ export function hubConfirmStatus(practiceId, value, hours = 24) {
 export function hubSendRequest(data) {
   if (snapshot.status !== 'online' || !data || !data.practiceId) return Promise.resolve(null);
   return getJson('/requests', { method: 'POST', body: JSON.stringify(data) }).catch(() => null);
+}
+
+/* ---------- Chats über den Hub (Web und Handy sehen dieselben Unterhaltungen) ---------- */
+export function hubOnline() { return snapshot.status === 'online'; }
+
+export function hubChat(method, path, body) {
+  return getJson(path, { method, body: body === undefined ? undefined : JSON.stringify(body) });
+}
+
+/* Bilder aus dem Browser (data:-URL) als Datei zum Hub hochladen → Verweis 'hub:<id>'. */
+export async function hubUploadDataUrl(dataUrl, name) {
+  const blob = await (await fetch(dataUrl)).blob();
+  const res = await fetch(API + '/files', { method: 'POST', headers: { 'content-type': blob.type || 'application/octet-stream', 'x-filename': encodeURIComponent(name || 'bild.jpg'), 'x-vn-client': state.clientId || 'web' }, body: blob });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new Error((data && data.error) || 'Upload fehlgeschlagen');
+  return { kind: 'image', ref: 'hub:' + data.id, mime: blob.type, size: blob.size, name: name || 'bild.jpg' };
+}
+
+export function hubFileUrl(ref) {
+  if (!ref) return '';
+  if (ref.startsWith('hub:')) return API + '/files/' + encodeURIComponent(ref.slice(4));
+  return ref;
 }

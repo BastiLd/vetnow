@@ -14,6 +14,7 @@
     "check": "node tools/sync-shared.mjs --check",
     "test": "node tools/test-all.mjs",
     "test:all": "node tools/test-all.mjs --mobile",
-    "install:all": "npm ci --prefix web && npm ci --prefix mobile && npm ci --prefix studio && npm install --prefix hub"
+    "install:all": "npm ci --prefix web && npm ci --prefix mobile && npm ci --prefix studio && npm install --prefix hub",
+    "build:firefox": "node tools/build-firefox.mjs"
   }
 }

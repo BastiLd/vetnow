@@ -14,7 +14,7 @@ import Constants from 'expo-constants';
 import { withLiveStatus } from '../shared/status.js';
 import { APP_VERSION } from '../shared/version.js';
 
-const state = { status: 'off', url: '', practices: [], rev: 0, clockOffsetMs: 0, clientId: 'mobile-' + Math.random().toString(36).slice(2, 10), error: '' };
+const state = { status: 'off', url: '', practices: [], chats: [], typing: {}, rev: 0, clockOffsetMs: 0, clientId: 'mobile-' + Math.random().toString(36).slice(2, 10), error: '' };
 let snapshot = { ...state };
 const listeners = new Set();
 let started = false;
@@ -74,7 +74,7 @@ async function loop() {
       state.clockOffsetMs = found.health.clockOffsetMs || 0;
       try {
         const s = await getJson(state.url, '/state', {}, 10000);
-        state.practices = s.practices || []; state.rev = s.rev || 0; state.status = 'online'; emit();
+        state.practices = s.practices || []; state.chats = s.chats || []; state.rev = s.rev || 0; state.status = 'online'; emit();
       } catch (e) { state.url = ''; state.error = e.message; continue; }
     }
     try {
@@ -84,7 +84,7 @@ async function loop() {
       if (r.clientId) state.clientId = r.clientId;
       if (r.resync) {
         const s = await getJson(state.url, '/state', {}, 10000);
-        state.practices = s.practices || []; state.rev = s.rev || 0; state.clockOffsetMs = s.clockOffsetMs || 0; emit();
+        state.practices = s.practices || []; state.chats = s.chats || []; state.rev = s.rev || 0; state.clockOffsetMs = s.clockOffsetMs || 0; emit();
         continue;
       }
       for (const ev of r.events || []) handle(ev);
@@ -104,6 +104,27 @@ function handle(ev) {
     const i = state.practices.findIndex((p) => p.id === ev.practice.id);
     if (i >= 0) state.practices[i] = ev.practice; else state.practices.push(ev.practice);
     state.practices = state.practices.slice();
+  } else if (ev.type === 'chat' && ev.chat) {
+    // Chat-Events kommen ohne Nachrichten → vorhandene behalten.
+    const i = state.chats.findIndex((c) => c.id === ev.chat.id);
+    const prev = i >= 0 ? state.chats[i] : null;
+    const next = { ...(prev || {}), ...ev.chat, messages: ev.chat.messages || (prev ? prev.messages : []) };
+    state.chats = i >= 0 ? state.chats.map((c, k) => (k === i ? next : c)) : [next, ...state.chats];
+  } else if (ev.type === 'chat:deleted') {
+    state.chats = state.chats.filter((c) => c.id !== ev.id);
+  } else if ((ev.type === 'message' || ev.type === 'message:update') && ev.chatId && ev.message) {
+    state.chats = state.chats.map((c) => {
+      if (c.id !== ev.chatId) return c;
+      const msgs = c.messages || [];
+      const j = msgs.findIndex((m) => m.id === ev.message.id || (ev.message.clientMsgId && m.clientMsgId === ev.message.clientMsgId));
+      const list = j >= 0 ? msgs.map((m, k) => (k === j ? ev.message : m)) : [...msgs, ev.message];
+      return { ...c, messages: list, updatedAt: Math.max(c.updatedAt || 0, ev.message.ts || 0) };
+    });
+    if (ev.type === 'message') state.typing = { ...state.typing, [ev.chatId]: null };
+  } else if (ev.type === 'read') {
+    state.chats = state.chats.map((c) => (c.id === ev.chatId ? { ...c, unread: { ...(c.unread || {}), [ev.side]: 0 } } : c));
+  } else if (ev.type === 'typing') {
+    state.typing = { ...state.typing, [ev.chatId]: ev.on ? ev.from : null };
   } else if (ev.type === 'clock') {
     state.clockOffsetMs = ev.offsetMs || 0;
   } else if (ev.type === 'broadcast') {
@@ -152,3 +173,14 @@ export function hubSendRequest(data) {
 
 /* KI-Adresse: der Hub bietet die alte Studio-KI-Schnittstelle unter /api/ai weiter an. */
 export function hubAiBase() { return snapshot.status === 'online' && snapshot.url ? snapshot.url + '/api/ai' : ''; }
+
+/* ---------- Chats über den Hub (dieselben Unterhaltungen wie Web und Extension) ---------- */
+export function hubChat(method, pathName, body) {
+  if (!snapshot.url) return Promise.reject(new Error('kein Hub'));
+  return getJson(snapshot.url, pathName, { method, body: body === undefined ? undefined : JSON.stringify(body) }, 15000);
+}
+export function hubFileUrl(ref) {
+  if (!ref) return '';
+  if (ref.startsWith('hub:')) return snapshot.url + '/api/v1/files/' + encodeURIComponent(ref.slice(4));
+  return ref;
+}

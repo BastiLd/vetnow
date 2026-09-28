@@ -13,6 +13,19 @@ import { ScreenAdmin } from './screens-admin.jsx';
 import { ScreenChats } from './screens-chats.jsx';
 import { AgentPanel } from './agent.jsx';
 import { useHub } from './lib/hubsync.js';
+import { getTheme, setTheme, nextTheme, THEME_LABEL } from './lib/theme.js';
+
+/* v3: Design-Umschalter — Automatisch → Hell → Dunkel. */
+function ThemeToggle() {
+  const [theme, setThemeState] = React.useState(getTheme);
+  const icon = theme === 'dark' ? '☾' : theme === 'light' ? '☀' : '◐';
+  return (
+    <button className="vn-theme-btn" type="button" aria-label={'Design: ' + THEME_LABEL[theme] + ' (umschalten)'} title={'Design: ' + THEME_LABEL[theme]}
+      onClick={() => { const n = nextTheme(theme); setTheme(n); setThemeState(n); toast('Design: ' + THEME_LABEL[n] + '.', 'info'); }}>
+      {icon}
+    </button>
+  );
+}
 
 /* v3: kleine Anzeige, ob die App live mit dem Hub verbunden ist (alle Geräte synchron) oder lokal läuft. */
 function LivePill() {
@@ -56,6 +69,7 @@ function TopBar({ route, nav, auth, onLogout }) {
         <Brand />
         <div className="row gap-2">
           <LivePill />
+          <ThemeToggle />
           <button className="vn-back m-hide" onClick={() => nav('owner-messages')} aria-label="Meine Nachrichten" style={{ color: 'var(--teal-700)' }}><VNIcon.chat s={20} /></button>
           {loggedIn && auth.role === 'clinic' && <button className="btn btn-secondary btn-sm m-hide" onClick={() => nav('dashboard')}>Dashboard</button>}
           {loggedIn

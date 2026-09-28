@@ -499,7 +499,7 @@ async function tabHelp() {
     card('PC', h('ol', {}, li('Doppelklick auf ', h('code', {}, 'START-VETNOW.bat'), ' im Ordner 00_NEU.'), li('Web-App: ', h('code', {}, lan + '/vetnow/')), li('Kontrollzentrum: ', h('code', {}, lan + '/konsole/')))),
     card('iPhone', h('ol', {}, li('Gleiches WLAN wie der PC.'), li('Safari: ', h('code', {}, 'http://<PC-IP>:8787/vetnow/'), ' → Teilen → „Zum Home-Bildschirm".'), li('Oder native App: „npm run mobile" starten, QR-Code mit der Kamera scannen (Expo Go, SDK 57).'))),
     card('Android', h('ol', {}, li('Chrome: ', h('code', {}, 'http://<PC-IP>:8787/vetnow/'), ' → „App installieren".'), li('Oder Expo Go (SDK 57) → QR-Code scannen.'))),
-    card('Extension', h('ol', {}, li('Chrome/Edge: chrome://extensions → Entwicklermodus → „Entpackte Erweiterung laden" → Ordner ', h('code', {}, 'vetnow-app/extension'), '.'), li('Firefox: about:debugging → „Temporäres Add-on laden" → manifest.json.'), li('In den Optionen der Extension die Hub-Adresse prüfen (Standard http://localhost:8787).'))),
+    card('Extension', h('ol', {}, li('Chrome/Edge: chrome://extensions → Entwicklermodus → „Entpackte Erweiterung laden" → Ordner ', h('code', {}, 'vetnow-app/extension'), '.'), li('Firefox: im Ordner vetnow-app „npm run build:firefox", dann about:debugging → „Temporäres Add-on laden" → dist/extension-firefox/manifest.json.'), li('In den Optionen der Extension die Hub-Adresse prüfen (Standard http://localhost:8787).'))),
     card('Testen mit Claude', h('p', {}, 'Jeder Knopf hat ein ', h('code', {}, 'data-testid'), '. Nach dem Selbsttest steht das Ergebnis in ', h('code', {}, 'window.__vnSelftest'), '.')),
   );
 }

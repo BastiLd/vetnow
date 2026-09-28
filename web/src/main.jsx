@@ -5,6 +5,10 @@ import { AdminProvider } from './lib/adminContext.jsx';
 import { ChatProvider } from './lib/chats.jsx';
 import './base.css';
 import './redesign.css';
+import './theme-v3.css';
+import { applyTheme, getTheme } from './lib/theme.js';
+
+applyTheme(getTheme());
 import { startHubSync } from './lib/hubsync.js';
 import { toast } from './components.jsx';
 

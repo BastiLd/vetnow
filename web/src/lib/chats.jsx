@@ -6,6 +6,8 @@ import { CHATS_SEED, CHAT_LABELS_SEED, CHAT_SETTINGS_DEFAULT } from '../data.js'
 import { toast } from '../components.jsx';
 import { useAdmin } from './adminContext.jsx';
 import { IS_CLEAN } from './config.js';
+import { useHub, hubChat, hubUploadDataUrl, hubFileUrl } from './hubsync.js';
+import { legacyChatsFromHub, hubSideFor } from '../../../shared/legacyview.js';
 
 const K_CHATS = 'vn_chats_v1';
 const K_LABELS = 'vn_labels_v1';
@@ -59,8 +61,40 @@ export function ChatProvider({ children }) {
     if (!save(K_CHATS, chats)) toast('Speicher voll — die letzte Änderung konnte nicht gesichert werden. Bitte große Anhänge löschen.', 'error');
   }, [chats]);
 
+  /* ---- v3: Hub-Modus ----
+     Ist der VetNow Hub online, zeigen wir dessen Chats (dieselben wie auf Handy und in der Extension)
+     und schicken jede Aktion an den Hub. Antworten von Bot/KI kommen dann nur noch vom Hub —
+     sonst würden mehrere offene Geräte gleichzeitig antworten. Ohne Hub: alles lokal wie bisher. */
+  const hub = useHub();
+  const hubMode = hub.status === 'online' && !IS_CLEAN;
+  const hubAuth = !auth || !auth.role ? null
+    : auth.role === 'owner' ? { role: 'owner', ownerId: 'owner-demo', name: auth.name } : { role: 'clinic', practiceId: 'drautal', name: auth.name };
+  const hubChats = React.useMemo(() => {
+    if (!hubMode || !hubAuth) return [];
+    return legacyChatsFromHub(hub.chats, hubAuth, hub.practices, { fileUrl: hubFileUrl })
+      .map((c) => ({ ...c, typing: hub.typing[c.id] ? hubSideFor(c, hub.typing[c.id]) : null }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hubMode, hub.chats, hub.practices, hub.typing, auth && auth.role, auth && auth.name]);
+  const findHub = (id) => hubChats.find((c) => c.id === id);
+  const rawHub = (id) => hub.chats.find((c) => c.id === id) || {};
+  const hubErr = (e) => toast('Hub: ' + (e && e.message ? e.message : 'Fehler'), 'error');
+  const msgAt = (id, idx) => { const c = findHub(id); return c && c.messages[idx]; };
+
   // ---- Chat-Operationen ----
   const createChat = (data) => {
+    if (hubMode) {
+      const id = uid('ch-');
+      const network = data.role === 'network';
+      const mySideNow = auth && auth.role === 'owner' ? 'owner' : 'clinic';
+      hubChat('POST', '/chats', {
+        id, kind: network ? 'network' : 'direct', practiceId: data.practiceId || 'drautal',
+        ...(network ? { peerPracticeId: data.peerPracticeId || 'woerthersee' } : { ownerId: 'owner-demo', ownerName: mySideNow === 'owner' ? (auth.name || 'Tierhalter:in') : (data.title || 'Tierhalter:in') }),
+        ...(data.title ? { titles: { [mySideNow]: data.title } } : {}),
+        animal: data.animal || 'other', color: data.color || '#0f9b8e', icon: data.icon || 'chat', labels: data.labels || [], autoReply: true,
+        messages: (data.messages || []).map((m) => ({ from: m.from || 'owner', type: m.type || 'text', text: m.text || '' })),
+      }).catch(hubErr);
+      return id;
+    }
     const id = uid('ch-');
     const chat = {
       id, role: data.role || 'owner', title: data.title || 'Neuer Chat', sub: data.sub || '',
@@ -70,11 +104,42 @@ export function ChatProvider({ children }) {
     setChats((cs) => [chat, ...cs]);
     return id;
   };
-  const updateChat = (id, patch) => setChats((cs) => cs.map((c) => (c.id === id ? { ...c, ...patch } : c)));
-  const deleteChat = (id) => setChats((cs) => cs.filter((c) => c.id !== id));
-  const togglePin = (id) => setChats((cs) => cs.map((c) => (c.id === id ? { ...c, pinned: !c.pinned } : c)));
-  const addMessage = (id, msg) => setChats((cs) => cs.map((c) => (c.id === id ? { ...c, messages: [...c.messages, { id: uid('m-'), ...msg }], unread: 0 } : c)));
-  const markRead = (id) => setChats((cs) => cs.map((c) => (c.id === id && c.unread ? { ...c, unread: 0 } : c)));
+  const updateChat = (id, patch) => {
+    if (hubMode) {
+      const c = findHub(id); if (!c) return;
+      const p = {};
+      for (const k of ['color', 'icon', 'labels', 'animal']) if (k in patch) p[k] = patch[k];
+      if ('title' in patch) p.titles = { ...(rawHub(id).titles || {}), [c.side]: patch.title };
+      if ('sub' in patch) p.subs = { ...(rawHub(id).subs || {}), [c.side]: patch.sub };
+      if ('pinned' in patch) p.pinned = { [c.side]: !!patch.pinned };
+      hubChat('PATCH', '/chats/' + id, p).catch(hubErr);
+      return;
+    }
+    updateChatLocal(id, patch);
+  };
+  const updateChatLocal = (id, patch) => setChats((cs) => cs.map((c) => (c.id === id ? { ...c, ...patch } : c)));
+  const deleteChat = (id) => { if (hubMode) { hubChat('DELETE', '/chats/' + id).catch(hubErr); return; } deleteChatLocal(id); };
+  const deleteChatLocal = (id) => setChats((cs) => cs.filter((c) => c.id !== id));
+  const togglePin = (id) => { if (hubMode) { const c = findHub(id); if (c) hubChat('PATCH', '/chats/' + id, { pinned: { [c.side]: !c.pinned } }).catch(hubErr); return; } togglePinLocal(id); };
+  const togglePinLocal = (id) => setChats((cs) => cs.map((c) => (c.id === id ? { ...c, pinned: !c.pinned } : c)));
+  const addMessage = (id, msg) => {
+    if (hubMode) {
+      const c = findHub(id);
+      const from = msg.type === 'note' ? (msg.from || 'clinic') : hubSideFor(c, msg.from || (c && c.role === 'owner' ? 'owner' : 'clinic'));
+      const body = { from, type: msg.type || 'text', text: msg.text || '', clientMsgId: uid('cm-') };
+      const go = (attachment) => hubChat('POST', '/chats/' + id + '/messages', attachment ? { ...body, attachment } : body).catch(hubErr);
+      if (msg.src && String(msg.src).startsWith('data:')) {
+        hubUploadDataUrl(msg.src, msg.fileName || (msg.type === 'image' ? 'bild.jpg' : 'datei'))
+          .then((a) => go(msg.type === 'image' ? a : { ...a, kind: 'file', name: msg.fileName || a.name, mime: msg.fileMime || a.mime }))
+          .catch(hubErr);
+      } else go();
+      return;
+    }
+    addMessageLocal(id, msg);
+  };
+  const addMessageLocal = (id, msg) => setChats((cs) => cs.map((c) => (c.id === id ? { ...c, messages: [...c.messages, { id: uid('m-'), ...msg }], unread: 0 } : c)));
+  const markRead = (id) => { if (hubMode) { const c = findHub(id); if (c && c.unread) hubChat('POST', '/chats/' + id + '/read', { side: c.side }).catch(() => {}); return; } markReadLocal(id); };
+  const markReadLocal = (id) => setChats((cs) => cs.map((c) => (c.id === id && c.unread ? { ...c, unread: 0 } : c)));
 
   /* ---- Einzelne Nachrichten bearbeiten / löschen / reagieren ----
      Adressiert über den Array-Index: Nachrichten werden ausschließlich hinten
@@ -84,15 +149,26 @@ export function ChatProvider({ children }) {
   const patchMessage = (id, idx, fn) => setChats((cs) => cs.map((c) => (
     c.id === id ? { ...c, messages: c.messages.map((m, i) => (i === idx ? fn(m) : m)) } : c
   )));
-  const editMessage = (id, idx, text) => patchMessage(id, idx, (m) => ({ ...m, text, editedAt: Date.now() }));
+  const editMessage = (id, idx, text) => { if (hubMode) { const m = msgAt(id, idx); if (m) hubChat('PATCH', '/chats/' + id + '/messages/' + m.id, { text }).catch(hubErr); return; } editMessageLocal(id, idx, text); };
+  const editMessageLocal = (id, idx, text) => patchMessage(id, idx, (m) => ({ ...m, text, editedAt: Date.now() }));
   /* Beim Löschen Inhalt WIRKLICH leeren — sonst bleibt ein gelöschtes Bild
      als Datenmüll im localStorage liegen. */
-  const deleteMessage = (id, idx) => patchMessage(id, idx, (m) => {
+  const deleteMessage = (id, idx) => { if (hubMode) { const m = msgAt(id, idx); if (m) hubChat('PATCH', '/chats/' + id + '/messages/' + m.id, { deleted: true }).catch(hubErr); return; } deleteMessageLocal(id, idx); };
+  const deleteMessageLocal = (id, idx) => patchMessage(id, idx, (m) => {
     const next = { ...m, deleted: true, deletedAt: Date.now(), text: '' };
     delete next.src; delete next.srcB64; delete next.fileName; delete next.fileMime; delete next.reactions;
     return next;
   });
-  const toggleReaction = (id, idx, side, emoji) => patchMessage(id, idx, (m) => {
+  const toggleReaction = (id, idx, side, emoji) => {
+    if (hubMode) {
+      const c = findHub(id); const m = msgAt(id, idx); if (!c || !m) return;
+      const current = m.reactions && m.reactions[side];
+      hubChat('PATCH', '/chats/' + id + '/messages/' + m.id, { reaction: { side: hubSideFor(c, side), emoji: current === emoji ? null : emoji } }).catch(hubErr);
+      return;
+    }
+    toggleReactionLocal(id, idx, side, emoji);
+  };
+  const toggleReactionLocal = (id, idx, side, emoji) => patchMessage(id, idx, (m) => {
     const r = { ...(m.reactions || {}) };
     if (r[side] === emoji) delete r[side]; else r[side] = emoji;
     return { ...m, reactions: r };
@@ -124,7 +200,7 @@ export function ChatProvider({ children }) {
      Tierhalter:innen sehen nur „Meine Tiere", Praxen Posteingang + Netzwerk.
      Abgemeldet ist nichts sichtbar. ---- */
   const visibleChats = React.useMemo(() => {
-    return chats.filter((c) => {
+    return (hubMode ? hubChats : chats).filter((c) => {
       if (hideTestData && c.isTestData) return false;
       if (c.role === 'owner' && !settings.enableOwner) return false;
       if (c.role === 'clinic' && !settings.enablePosteingang) return false;
@@ -133,12 +209,12 @@ export function ChatProvider({ children }) {
       if (auth.role === 'owner') return c.role === 'owner';
       return c.role === 'clinic' || c.role === 'network';
     });
-  }, [chats, hideTestData, settings, auth]);
+  }, [chats, hubChats, hubMode, hideTestData, settings, auth]);
 
   const totalUnread = React.useMemo(() => visibleChats.reduce((a, c) => a + (c.unread || 0), 0), [visibleChats]);
 
   const value = {
-    chats, visibleChats, labels, settings, totalUnread,
+    chats: hubMode ? hubChats : chats, visibleChats, labels, settings, totalUnread, hubMode,
     createChat, updateChat, deleteChat, togglePin, addMessage, markRead,
     editMessage, deleteMessage, toggleReaction,
     createLabel, updateLabel, deleteLabel, setSetting, resetSeed, clearAll,

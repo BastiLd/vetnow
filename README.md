@@ -8,8 +8,8 @@
 |---|---|---|
 | **VetNow Hub** | `hub/` · http://localhost:8787 | verbindet alle Geräte live (Status, Anfragen, Antworten), Bot + KI serverseitig |
 | **Kontrollzentrum** | http://localhost:8787/konsole/ | Admin- & Test-Seite mit Knöpfen für alles (Simulation, Geräte, Bot/KI, Zeit, Fehler, Selbsttest) |
-| Web-App / PWA | `web/` · /vetnow/ | Live-Status vom Hub, echtes Datum, Routen-Links, Tab-Leiste fix |
-| iPhone/Android | `mobile/` | **Expo SDK 57** (aktuelle Expo Go), Hub-Anbindung, KI-Adresse repariert |
+| Web-App / PWA | `web/` · /vetnow/ | Chats + Status live über den Hub, Dunkelmodus, lokale Schrift, echtes Datum, Routen-Links |
+| iPhone/Android | `mobile/` | **Expo SDK 57** (aktuelle Expo Go), Chats + Status live über den Hub, KI-Adresse repariert |
 | Extension | `extension/` | v3: live mit dem Hub, sicher, Optionen, Firefox-tauglich |
 | Gemeinsamer Kern | `shared/` | Bot 3.0 mit Sicherheits-Triage, Status-Engine, Store, KI-Client — eine Quelle für alle |
 

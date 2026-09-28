@@ -18,3 +18,4 @@ export * from './autoreply.js';
 export * from './hubclient.js';
 export * from './store.js';
 export * from './bot/index.js';
+export * from './legacyview.js';

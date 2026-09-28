@@ -41,3 +41,12 @@ Fortsetzung der Nummerierung aus CHANGELOG.md.
 
 ## Werkzeuge
 293. `START-VETNOW.bat` (Menü: Normal / Entwicklung / Handy / Tests), `TESTS-AUSFUEHREN.bat`, `npm run dev|hub|mobile|test|test:all`.
+
+## Runde 4b — Chats überall live + neues Design
+294. **Chats live auf allen Geräten:** Web-App und Handy-App zeigen im Hub-Modus dieselben Unterhaltungen wie die Extension. Nachrichten, Bilder, Bearbeiten, Löschen, Reaktionen, Anpinnen, Umbenennen, Gelesen-Status und die Tipp-Anzeige laufen über den Hub. Eine Anfrage vom Handy erscheint sofort im Praxis-Posteingang am PC; die Antwort der Praxis kommt sofort am Handy an.
+295. Im Hub-Modus antworten Bot/KI nur noch über den Hub — keine doppelten Antworten mehr, wenn mehrere Geräte denselben Chat offen haben. Für echte Mensch-zu-Mensch-Tests: Kontrollzentrum → Bot & KI → Antwort-Modus „keine Auto-Antworten".
+296. Gemeinsame Brücke `shared/legacyview.js` (Hub-Chat → Chat-Form der Screens), gleich für Web und Handy, mit Tests.
+297. **Dunkelmodus für die Web-App** (automatisch wie das Gerät, oder per Umschalter ◐/☀/☾ oben rechts; gespeichert pro Gerät). Alle fest weißen Flächen, Rahmen und Teal-Flächen mit weißer Schrift angepasst.
+298. Bessere Lesbarkeit: Primär-Buttons und graue Texte erfüllen jetzt WCAG-AA-Kontrast; Glas-Effekt für Kopf- und Tab-Leiste, weichere Schatten, Fokus-Rahmen für Tastatur-Bedienung, reduzierte Animationen wenn gewünscht.
+299. Schrift Inter liegt jetzt lokal in der App — kein Abruf bei Google Fonts mehr (DSGVO), funktioniert auch offline.
+300. Extension: Chrome/Edge-Manifest ohne `background.scripts` (behebt „'background.scripts' requires manifest version of 2 or lower"); Firefox bekommt ein eigenes Manifest über `npm run build:firefox`.

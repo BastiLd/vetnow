@@ -259,7 +259,9 @@ function messageStamp(m) {
 
 /* ---------- Thread ---------- */
 function ChatThread({ chat, onBack, addMessage, labels, settings }) {
-  const { editMessage, deleteMessage, toggleReaction } = useChats();
+  const { editMessage, deleteMessage, toggleReaction, markRead: markReadHub } = useChats();
+  // v3: Solange der Chat offen ist, gelten neue Nachrichten aus dem Hub sofort als gelesen.
+  React.useEffect(() => { if (chat.hub && chat.unread) markReadHub(chat.id); }, [chat.hub, chat.unread, chat.messages.length]); // eslint-disable-line react-hooks/exhaustive-deps
   const me = chat.role === 'owner' ? 'owner' : 'clinic';
   const other = me === 'owner' ? 'clinic' : 'owner';
   const [draft, setDraft] = React.useState('');
@@ -297,7 +299,11 @@ function ChatThread({ chat, onBack, addMessage, labels, settings }) {
   // Auto-Antwort-Bot 2.0: reagiert, wenn die letzte Nachricht von MIR ist
   // (oder Chat leer → Begrüßung). Kann mehrteilige Antworten senden und
   // optional Ollama (über das Studio) als KI-Backend nutzen.
+  // v3: Im Hub-Modus zeigt die Tipp-Anzeige, was der Hub meldet (Bot/KI oder ein Mensch auf einem anderen Gerät).
+  React.useEffect(() => { if (chat.hub) setTyping(chat.typing === other); }, [chat.hub, chat.typing, other]);
+
   React.useEffect(() => {
+    if (chat.hub) return; // v3: Hub antwortet selbst (sonst doppelte Antworten von mehreren Geräten)
     if (!settings || !settings.botEnabled) return;
     const msgs = chat.messages;
     const last = msgs[msgs.length - 1];

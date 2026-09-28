@@ -47,7 +47,9 @@ Vom PC selbst brauchst du kein Passwort. Von anderen Geräten: `vetnow2026` (än
 ## 5. Extension (Praxis-Popup)
 
 - **Chrome/Edge:** `chrome://extensions` → Entwicklermodus → „Entpackte Erweiterung laden" → Ordner `vetnow-app\extension`.
-- **Firefox:** `about:debugging#/runtime/this-firefox` → „Temporäres Add-on laden" → `extension\manifest.json`.
+- **Firefox:** einmal im Ordner `vetnow-app` `npm run build:firefox` ausführen → `about:debugging#/runtime/this-firefox` → „Temporäres Add-on laden" → `dist\extension-firefox\manifest.json`.
+  (Firefox braucht ein eigenes Manifest — Chrome/Edge melden sonst „background.scripts requires manifest version 2".)
+- Falls Chrome die Extension schon mit Fehler geladen hatte: in `chrome://extensions` bei VetNow auf „Neu laden" (↻) klicken bzw. „Fehler löschen".
 - Optionen der Extension: Hub-Adresse (Standard `http://localhost:8787`, ZimaOS: `http://192.168.68.10:3000`) und eigene Praxis.
 - Das Symbol zeigt ungelesene Anfragen und die Status-Farbe.
 
@@ -57,8 +59,14 @@ Vom PC selbst brauchst du kein Passwort. Von anderen Geräten: `vetnow2026` (än
 2. Handy: Web-App oder Expo-App öffnen → erscheint in der Geräteliste.
 3. Extension: Status auf **Rot** klicken → Handy zeigt bei Drautal sofort „Heute nicht verfügbar".
 4. Handy: bei Drautal eine **Anfrage senden** → erscheint in der Extension im Posteingang (Zähler am Symbol).
-5. Extension: antworten → steht im Hub (Kontrollzentrum → Live-Log).
+5. Extension oder Web-App (als Praxis angemeldet → Chats): antworten → die Antwort erscheint sofort am Handy.
 6. Kontrollzentrum → Zeit +25 h → alle Status werden grau („Nicht aktuell bestätigt"), auf allen Geräten.
+
+### Mensch-zu-Mensch statt Bot
+Standardmäßig spielt der Bot die Gegenseite (Demo). Wenn zwei echte Personen testen (z. B. Handy = Tierhalter:in, PC/Extension = Praxis): Kontrollzentrum → **Bot & KI** → Antwort-Modus **„keine Auto-Antworten"** → Speichern.
+
+### Design
+Oben rechts in der Web-App: ◐ Automatisch · ☀ Hell · ☾ Dunkel.
 
 ## 7. Automatische Tests
 

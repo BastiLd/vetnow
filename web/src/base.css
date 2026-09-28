@@ -3,7 +3,7 @@
    Clean, calm, trustworthy. Mobile-first.
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+/* v3: Schrift Inter wird lokal geladen (theme-v3.css) — kein Abruf bei Google mehr (DSGVO). */
 
 :root {
   /* Brand — Teal */

@@ -111,7 +111,12 @@ export default function ChatThreadScreen({ route, navigation }) {
   // Auto-Antwort-Bot 2.0: reagiert, wenn die letzte Nachricht von MIR ist
   // (oder Chat leer → Begrüßung). Kann mehrteilige Antworten senden.
   const msgLen = chat ? chat.messages.length : 0;
+  // v3: Im Hub-Modus kommt die Tipp-Anzeige vom Hub; neue Nachrichten im offenen Chat gelten als gelesen.
+  React.useEffect(() => { if (chat && chat.hub) setTyping(chat.typing === other); }, [chat && chat.hub, chat && chat.typing, other]);
+  React.useEffect(() => { if (chat && chat.hub && chat.unread) markRead(chatId); }, [chat && chat.hub, chat && chat.unread, msgLen]); // eslint-disable-line react-hooks/exhaustive-deps
+
   React.useEffect(() => {
+    if (chat && chat.hub) return; // v3: Hub antwortet selbst (sonst doppelte Antworten)
     if (!chat || !settings || !settings.botEnabled) return;
     const arr = chat.messages;
     const lastM = arr[arr.length - 1];

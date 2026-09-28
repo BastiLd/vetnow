@@ -1,0 +1,175 @@
+/* =====================================================================
+   VetNow v3 — Design-Update + Dunkelmodus
+   ---------------------------------------------------------------------
+   Wird NACH base.css und redesign.css geladen und überschreibt nur Tokens
+   und gezielte Stellen. Dadurch bleibt das vertraute Design (Teal, Ampel,
+   Pfoten-Logo) erhalten, wird aber:
+   - besser lesbar (Kontraste nach WCAG AA: Primär-Buttons, graue Texte),
+   - DSGVO-freundlich (Schrift Inter liegt lokal, kein Abruf bei Google),
+   - dunkel, wenn das Gerät dunkel eingestellt ist — oder per Umschalter
+     (html[data-theme="dark"|"light"], gespeichert unter vn3:theme).
+   ===================================================================== */
+
+/* ---------- Schrift lokal statt Google Fonts ---------- */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('./assets/fonts/inter-latin-wght-normal.woff2') format('woff2-variations'), url('./assets/fonts/inter-latin-wght-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('./assets/fonts/inter-latin-ext-wght-normal.woff2') format('woff2-variations'), url('./assets/fonts/inter-latin-ext-wght-normal.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* ---------- Helles Design: Feinschliff + Kontrast ---------- */
+:root {
+  color-scheme: light;
+  --ink-3: #56665f;               /* vorher #6c7d79 → 4,0:1 auf Grau, jetzt ≥ 4,5:1 */
+  --btn-primary-bg: var(--teal-700);  /* Weiß auf teal-600 hatte nur 3,4:1 */
+  --btn-primary-hover: var(--teal-900);
+  --glass: rgba(255, 255, 255, .86);
+  --page-glow: radial-gradient(1200px 520px at 50% -180px, rgba(15, 155, 142, .10), transparent 70%);
+  --focus: 0 0 0 3px rgba(25, 179, 164, .45);
+  --sh-1: 0 1px 2px rgba(17, 32, 30, .05), 0 1px 3px rgba(17, 32, 30, .07);
+  --sh-2: 0 6px 18px rgba(17, 32, 30, .08), 0 1px 3px rgba(17, 32, 30, .05);
+  --sh-3: 0 16px 40px rgba(17, 32, 30, .14);
+}
+
+/* ---------- Dunkles Design ---------- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --teal-900: #9ee8de; --teal-700: #4fd1c1; --teal-600: #2bb3a5; --teal-500: #3cc2b3; --teal-100: #174039; --teal-50: #11302b;
+    --ink: #e6efec; --ink-2: #bccbc7; --ink-3: #97aaa5;
+    --line: #26352f; --line-2: #1f2c28;
+    --surface: #16221f; --surface-2: #0e1715; --surface-3: #1d2b27;
+    --green: #22c55e; --green-bg: #13301f; --green-ink: #6ee29a;
+    --yellow: #f0b429; --yellow-bg: #33290f; --yellow-ink: #f5cd6b;
+    --red: #f05252; --red-bg: #3a1716; --red-ink: #ff9a95;
+    --grey: #7d908b; --grey-bg: #202c29; --grey-ink: #b3c2be;
+    --blue: #4c9bd6; --blue-bg: #15283a; --blue-ink: #9ccbf0;
+    --btn-primary-bg: #0f8a7e; --btn-primary-hover: #13a193;
+    --glass: rgba(18, 28, 25, .86);
+    --page-glow: radial-gradient(1200px 520px at 50% -180px, rgba(60, 194, 179, .14), transparent 70%);
+    --sh-1: 0 1px 2px rgba(0, 0, 0, .35);
+    --sh-2: 0 6px 18px rgba(0, 0, 0, .40);
+    --sh-3: 0 16px 40px rgba(0, 0, 0, .55);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --teal-900: #9ee8de; --teal-700: #4fd1c1; --teal-600: #2bb3a5; --teal-500: #3cc2b3; --teal-100: #174039; --teal-50: #11302b;
+  --ink: #e6efec; --ink-2: #bccbc7; --ink-3: #97aaa5;
+  --line: #26352f; --line-2: #1f2c28;
+  --surface: #16221f; --surface-2: #0e1715; --surface-3: #1d2b27;
+  --green: #22c55e; --green-bg: #13301f; --green-ink: #6ee29a;
+  --yellow: #f0b429; --yellow-bg: #33290f; --yellow-ink: #f5cd6b;
+  --red: #f05252; --red-bg: #3a1716; --red-ink: #ff9a95;
+  --grey: #7d908b; --grey-bg: #202c29; --grey-ink: #b3c2be;
+  --blue: #4c9bd6; --blue-bg: #15283a; --blue-ink: #9ccbf0;
+  --btn-primary-bg: #0f8a7e; --btn-primary-hover: #13a193;
+  --glass: rgba(18, 28, 25, .86);
+  --page-glow: radial-gradient(1200px 520px at 50% -180px, rgba(60, 194, 179, .14), transparent 70%);
+  --sh-1: 0 1px 2px rgba(0, 0, 0, .35);
+  --sh-2: 0 6px 18px rgba(0, 0, 0, .40);
+  --sh-3: 0 16px 40px rgba(0, 0, 0, .55);
+}
+
+/* ---------- Grundlagen ---------- */
+body { background: var(--page-glow), var(--surface-2); background-attachment: fixed; }
+::selection { background: rgba(25, 179, 164, .28); }
+:focus-visible { outline: none; box-shadow: var(--focus); border-radius: 8px; }
+a { color: var(--teal-700); }
+
+/* Primär-Buttons: dunkleres Teal für lesbaren weißen Text, weicher Verlauf, Druck-Effekt */
+.btn-primary { background: linear-gradient(180deg, color-mix(in srgb, var(--btn-primary-bg) 88%, white), var(--btn-primary-bg)); color: #fff; }
+.btn-primary:hover { background: var(--btn-primary-hover); }
+.btn { transition: transform .12s ease, box-shadow .15s ease, background .15s ease; }
+.btn:active { transform: translateY(1px) scale(.99); }
+
+/* Karten: etwas mehr Tiefe, beim Überfahren (nur Maus) leicht angehoben */
+.card { border-color: var(--line); box-shadow: var(--sh-1); }
+@media (hover: hover) {
+  .card.clickable:hover, .result-card:hover, .role-card:hover { box-shadow: var(--sh-2); transform: translateY(-1px); }
+}
+.card.clickable, .result-card, .role-card { transition: box-shadow .18s ease, transform .18s ease; }
+
+/* Kopf- und Tab-Leiste: „Glas" in beiden Designs (vorher fest weiß) */
+.vn-topbar, .sticky-actions, .mobile-tabbar { background: var(--glass); backdrop-filter: saturate(1.4) blur(12px); -webkit-backdrop-filter: saturate(1.4) blur(12px); }
+
+/* Stellen, die bisher fest weiß waren */
+.quick-reply, .cal-viewseg button.is-on, .ext-qr { background: var(--surface); }
+.input.has-error, .selectbox.has-error { background: var(--red-bg); }
+.cal-cell.sel .cc-dot { background: color-mix(in srgb, var(--surface) 85%, transparent); }
+
+/* Eingabefelder im Dunkeln */
+.input, .selectbox, textarea, select { background-color: var(--surface); color: var(--ink); }
+input::placeholder, textarea::placeholder { color: var(--ink-3); }
+
+/* Live-Anzeige im Kopf (aus App.jsx) mit Tokens statt fester Farben */
+.vn-live-pill { color: var(--grey-ink); background: var(--grey-bg); }
+.vn-live-pill.on { color: var(--green-ink); background: var(--green-bg); }
+
+/* Design-Umschalter im Kopf */
+.vn-theme-btn {
+  width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface);
+  color: var(--ink-2); display: inline-grid; place-items: center; cursor: pointer; font-size: 16px; line-height: 1;
+}
+.vn-theme-btn:hover { color: var(--teal-700); border-color: var(--teal-600); }
+
+/* Sanftere Übergänge beim Umschalten des Designs — aber nicht für Menschen, die Bewegung reduziert haben */
+@media (prefers-reduced-motion: no-preference) {
+  body, .card, .vn-topbar, .mobile-tabbar, .btn, .input { transition-property: background-color, color, border-color, box-shadow, transform; transition-duration: .2s; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+
+/* Bilder/Karten-Hintergründe im Dunkeln nicht grell */
+:root[data-theme="dark"] img:not([src$=".svg"]) { filter: brightness(.92); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) img:not([src$=".svg"]) { filter: brightness(.92); } }
+
+/* ---------- Dunkel: Flächen mit weißer Schrift auf Teal ----------
+   Im Dunkeln sind die Teal-Töne für TEXT aufgehellt (sonst unlesbar auf dunklem Grund).
+   Für FLÄCHEN mit weißer Schrift (Notfall-Knopf, Logo, eigene Chat-Blasen, Senden …)
+   brauchen wir dagegen dunkle Teal-Töne — sonst wäre weiß auf hellem Teal kaum lesbar. */
+:root { --brand-a: #19b3a4; --brand-b: #0c7d72; --brand-c: #0a4d47; --bubble-me: #0f9b8e; }
+:root[data-theme="dark"] { --brand-a: #13877c; --brand-b: #0e6b62; --brand-c: #0a4a44; --bubble-me: #0f7d72; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --brand-a: #13877c; --brand-b: #0e6b62; --brand-c: #0a4a44; --bubble-me: #0f7d72; } }
+.vn-brand-mark, .agent-fab { background: linear-gradient(150deg, var(--brand-a), var(--brand-b)); }
+.emergency-cta { background: linear-gradient(145deg, var(--brand-a), var(--brand-c)); }
+.hero-art, .auth-hero { background: linear-gradient(155deg, var(--brand-b), var(--brand-c)); }
+.bubble.clinic, .bubble-av.clinic, .bubble-img.clinic, .chat-send { background: var(--bubble-me); }
+.chat-send:hover { background: var(--brand-b); }
+.block-bar { background: repeating-linear-gradient(135deg, var(--surface-3), var(--surface-3) 9px, var(--line-2) 9px, var(--line-2) 18px); border-color: var(--line); }
+
+/* ---------- Icon-Knöpfe außerhalb der Kopfzeile (Chats: Labels, Einstellungen, Zeilen-Menü) ----------
+   Waren nur in .vn-topbar gestaltet → sonst Standard-Browser-Knopf (grau, im Dunkeln klobig). */
+.vn-back { display: inline-grid; place-items: center; padding: 0; border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); border-radius: 10px; cursor: pointer; }
+.vn-back:hover { color: var(--teal-700); border-color: var(--teal-600); }
+
+/* ---------- Rahmen/Flächen, die fest auf helle Töne gesetzt waren ---------- */
+.tag-spec, .role-card .rc-icon.clinic { background: var(--blue-bg); color: var(--blue-ink); }
+:root[data-theme="dark"] .badge-green, :root[data-theme="dark"] .appt-card.is-done, :root[data-theme="dark"] .verify-badge.verified { border-color: color-mix(in srgb, var(--green) 35%, transparent); }
+:root[data-theme="dark"] .badge-yellow, :root[data-theme="dark"] .notice-warn, :root[data-theme="dark"] .expire-reminder, :root[data-theme="dark"] .verify-badge.pending { border-color: color-mix(in srgb, var(--yellow) 35%, transparent); }
+:root[data-theme="dark"] .badge-red, :root[data-theme="dark"] .notice-danger { border-color: color-mix(in srgb, var(--red) 35%, transparent); }
+:root[data-theme="dark"] .badge-grey, :root[data-theme="dark"] .notice-grey { border-color: var(--line); }
+:root[data-theme="dark"] .vertretung-note { border-color: color-mix(in srgb, var(--blue) 35%, transparent); }
+:root[data-theme="dark"] .cal-cell.weekend:not(.muted) { background: var(--surface-3); }
+:root[data-theme="dark"] .ext-stage { background: var(--surface-3); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .badge-green, :root:not([data-theme="light"]) .appt-card.is-done, :root:not([data-theme="light"]) .verify-badge.verified { border-color: color-mix(in srgb, var(--green) 35%, transparent); }
+  :root:not([data-theme="light"]) .badge-yellow, :root:not([data-theme="light"]) .notice-warn, :root:not([data-theme="light"]) .expire-reminder, :root:not([data-theme="light"]) .verify-badge.pending { border-color: color-mix(in srgb, var(--yellow) 35%, transparent); }
+  :root:not([data-theme="light"]) .badge-red, :root:not([data-theme="light"]) .notice-danger { border-color: color-mix(in srgb, var(--red) 35%, transparent); }
+  :root:not([data-theme="light"]) .badge-grey, :root:not([data-theme="light"]) .notice-grey { border-color: var(--line); }
+  :root:not([data-theme="light"]) .vertretung-note { border-color: color-mix(in srgb, var(--blue) 35%, transparent); }
+  :root:not([data-theme="light"]) .cal-cell.weekend:not(.muted) { background: var(--surface-3); }
+  :root:not([data-theme="light"]) .ext-stage { background: var(--surface-3); }
+}

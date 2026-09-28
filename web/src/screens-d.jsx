@@ -116,7 +116,7 @@ export function ScreenLogin({ nav, setAuth }) {
   );
 }
 function segBtn(on) {
-  return { flex: 1, border: 0, background: on ? '#fff' : 'transparent', color: on ? 'var(--teal-700)' : 'var(--ink-2)', padding: '10px', borderRadius: 'var(--r-pill)', fontWeight: 650, fontSize: 14, boxShadow: on ? 'var(--sh-1)' : 'none' };
+  return { flex: 1, border: 0, background: on ? 'var(--surface)' : 'transparent', color: on ? 'var(--teal-700)' : 'var(--ink-2)', padding: '10px', borderRadius: 'var(--r-pill)', fontWeight: 650, fontSize: 14, boxShadow: on ? 'var(--sh-1)' : 'none' };
 }
 
 /* ---- Tierhalter Registrierung (1 Seite, 5 Felder) ---- */
