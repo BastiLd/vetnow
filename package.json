@@ -1,0 +1,19 @@
+{
+  "name": "vetnow",
+  "version": "3.0.0",
+  "private": true,
+  "type": "module",
+  "description": "VetNow Kärnten v3 — Web-PWA, iPhone/Android (Expo SDK 57), Extension, VetNow Hub, Bot 3.0 + KI",
+  "scripts": {
+    "hub": "node hub/index.js",
+    "dev": "node tools/dev.mjs",
+    "web": "npm run dev --prefix web",
+    "build": "npm run build --prefix web",
+    "mobile": "node tools/mobile.mjs",
+    "sync:shared": "node tools/sync-shared.mjs",
+    "check": "node tools/sync-shared.mjs --check",
+    "test": "node tools/test-all.mjs",
+    "test:all": "node tools/test-all.mjs --mobile",
+    "install:all": "npm ci --prefix web && npm ci --prefix mobile && npm ci --prefix studio && npm install --prefix hub"
+  }
+}

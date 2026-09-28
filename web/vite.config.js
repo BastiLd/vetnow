@@ -4,7 +4,14 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // base: GitHub Pages Project Page unter https://bastild.github.io/vetnow/
 export default defineConfig({
-  base: '/vetnow/',
+  base: process.env.VITE_BASE || '/vetnow/',
+  // v3: /api → VetNow Hub (Live-Sync + KI). shared/ liegt eine Ebene höher → Zugriff erlauben.
+  server: {
+    port: 5199,
+    host: true,
+    fs: { allow: ['..'] },
+    proxy: { '/api': { target: process.env.VITE_HUB_URL || 'http://localhost:8787', changeOrigin: true } },
+  },
   plugins: [
     react(),
     VitePWA({

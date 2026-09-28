@@ -5,6 +5,11 @@ import { AdminProvider } from './lib/adminContext.jsx';
 import { ChatProvider } from './lib/chats.jsx';
 import './base.css';
 import './redesign.css';
+import { startHubSync } from './lib/hubsync.js';
+import { toast } from './components.jsx';
+
+// v3: Live-Verbindung zum VetNow Hub (falls vorhanden) — Befehle aus dem Kontrollzentrum erscheinen als Hinweis.
+startHubSync({ onBroadcast: (text, level) => toast(text, level === 'error' ? 'error' : 'info') });
 
 const VALID = ['home','search','results','detail','request','dashboard','owner-messages','auth','login','register-owner','register-clinic','extension','admin'];
 

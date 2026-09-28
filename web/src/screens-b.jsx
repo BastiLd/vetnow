@@ -4,6 +4,13 @@ import { VNIcon, StatusBadge, ConfirmLine, AnimalTags, ServiceTags, SpecialtyTag
 import { ANIMAL_LABEL, SERVICE_LABEL, SPECIALTY_LABEL, sortPractices } from './data.js';
 import { useVNData } from './lib/adminContext.jsx';
 
+/* Route in der Karten-App öffnen (vorher nur ein Hinweis-Toast). iPhone/Mac → Apple Karten, sonst Google Maps. */
+function openRoute(address) {
+  const q = encodeURIComponent(address || '');
+  const url = /iPhone|iPad|Macintosh/.test(navigator.userAgent) ? 'https://maps.apple.com/?daddr=' + q : 'https://www.google.com/maps/dir/?api=1&destination=' + q;
+  window.open(url, '_blank', 'noopener');
+}
+
 export function applyFilters(practices, filters) {
   const animals = filters.animals || [];
   const situations = filters.situations || [];
@@ -93,7 +100,7 @@ export function ResultCard({ p, nav }) {
 
       <div className="btn-row" style={{ marginBottom: 10 }}>
         <a className="btn btn-primary" href={'tel:' + p.phone.replace(/\s/g, '')}><VNIcon.phone s={18} /> Anrufen</a>
-        <button className="btn btn-secondary" onClick={() => toast('Route in Karten-App öffnen: ' + p.address, 'info')}><VNIcon.route s={18} /> Route</button>
+        <button className="btn btn-secondary" onClick={() => openRoute(p.address)}><VNIcon.route s={18} /> Route</button>
       </div>
       <button className="btn btn-ghost btn-block btn-sm" onClick={() => nav('detail', { practiceId: p.id })}>
         Details ansehen <VNIcon.chevron s={16} />
@@ -165,13 +172,13 @@ export function ScreenDetail({ nav, practiceId }) {
   }
   const grey = p.status === 'grey';
   const noticeCls = grey ? 'notice-grey' : p.status === 'red' ? 'notice-danger' : p.status === 'yellow' ? 'notice-warn' : 'notice-info';
-  const todayIdx = 2; // Mittwoch (demo "heute", passend zum Kalender 04.06.)
+  const todayIdx = (new Date().getDay() + 6) % 7; // Mo=0 … So=6 — echtes heutiges Datum
 
   const actions = (
     <div className="stack-3">
       <a className="btn btn-primary btn-lg btn-block" href={'tel:' + p.phone.replace(/\s/g, '')}><VNIcon.phone s={20} /> Jetzt anrufen</a>
       <div className="btn-row">
-        <button className="btn btn-secondary" onClick={() => toast('Route in Karten-App öffnen: ' + p.address, 'info')}><VNIcon.route s={18} /> Route öffnen</button>
+        <button className="btn btn-secondary" onClick={() => openRoute(p.address)}><VNIcon.route s={18} /> Route öffnen</button>
         <button className="btn btn-secondary" onClick={() => nav('request', { practiceId: p.id })}><VNIcon.send s={18} /> Anfrage</button>
       </div>
     </div>

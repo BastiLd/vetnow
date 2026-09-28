@@ -1,5 +1,6 @@
 /* Anfrage senden: Formular mit Validierung + Bestätigungsansicht */
 import React from 'react';
+import { hubSendRequest } from '../lib/hubsync';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { C, S } from '../theme';
 import { Card, Notice, Btn, Field, Input, ChoiceGrid, H2, P, toast } from '../components';
@@ -51,6 +52,8 @@ export default function RequestScreen({ route, navigation }) {
       });
       setChatId(id);
       setSent(true);
+      // v3: Mit Hub landet die Anfrage live im Posteingang der Praxis (Web-Dashboard, Extension).
+      hubSendRequest({ practiceId: p && p.id, ownerName: form.name, phone: form.phone, animal: form.animal || 'other', situation: form.situation || '', district: form.district || '', message: (form.message || '').trim() || 'Guten Tag, ich hätte gern einen Termin.' });
       toast('Anfrage gesendet — als Chat gespeichert.', 'success');
     } else toast('Bitte prüfen Sie die markierten Felder.', 'error');
   };

@@ -2,6 +2,7 @@
    vollständige Portierung von screens-e.jsx (StatusPanel inkl. Abwesenheiten
    & Ablauf-Erinnerung, Chat, voller Kalender, volles Profil). */
 import React from 'react';
+import { hubConfirmStatus } from '../lib/hubsync';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { C, S, R, STATUS_COLOR } from '../theme';
 import { Card, SectionLabel, StatusBadge, Notice, Btn, Field, Input, ChoiceGrid, SwitchRow, H2, P, Meta, KV, toast } from '../components';
@@ -63,7 +64,7 @@ function StatusTab({ s, practices }) {
           <Text style={ds.reminderText}>
             <Text style={{ fontWeight: '800' }}>Status läuft bald ab</Text> — in {pad2(s.hh)}:{pad2(s.mm)}:{pad2(s.ss)} werden Sie automatisch grau markiert.
           </Text>
-          <TouchableOpacity style={ds.reminderBtn} onPress={() => { s.setExpiry(Date.now() + s.DURATION); toast('Status um 24 Stunden verlängert.', 'success'); }}>
+          <TouchableOpacity style={ds.reminderBtn} onPress={() => { s.setExpiry(Date.now() + s.DURATION); hubConfirmStatus(s.me && s.me.id, s.picked); toast('Status um 24 Stunden verlängert.', 'success'); }}>
             <Text style={{ color: C.yellowInk, fontWeight: '700', fontSize: 12.5 }}>Verlängern</Text>
           </TouchableOpacity>
         </View>
@@ -77,7 +78,7 @@ function StatusTab({ s, practices }) {
             return (
               <TouchableOpacity key={stt.key} activeOpacity={0.7}
                 style={[ds.statusBtn, on && { borderColor: STATUS_COLOR[stt.key].dot, backgroundColor: STATUS_COLOR[stt.key].bg }]}
-                onPress={() => { s.setPicked(stt.key); s.setExpiry(Date.now() + s.DURATION); toast('Status aktualisiert.', 'success'); }}>
+                onPress={() => { s.setPicked(stt.key); s.setExpiry(Date.now() + s.DURATION); hubConfirmStatus(s.me && s.me.id, stt.key); toast('Status aktualisiert.', 'success'); }}>
                 <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: STATUS_COLOR[stt.key].dot }} />
                 <View style={{ flex: 1 }}>
                   <Text style={ds.statusTitle}>{stt.title}</Text>
@@ -102,7 +103,7 @@ function StatusTab({ s, practices }) {
           </View>
         </View>
         <Btn label="Status für 24 Stunden bestätigen" icon="refresh" size="lg" block style={{ marginTop: 12 }}
-          onPress={() => { s.setExpiry(Date.now() + s.DURATION); toast('Status für 24 Stunden bestätigt.', 'success'); }} />
+          onPress={() => { s.setExpiry(Date.now() + s.DURATION); hubConfirmStatus(s.me && s.me.id, s.picked); toast('Status für 24 Stunden bestätigt.', 'success'); }} />
         <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: C.line2 }}>
           <SectionLabel style={{ marginBottom: 8, color: C.ink3 }}>Nur zum Ausprobieren</SectionLabel>
           <View style={{ flexDirection: 'row', gap: 8 }}>

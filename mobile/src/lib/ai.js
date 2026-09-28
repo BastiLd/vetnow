@@ -7,6 +7,8 @@
      3. Metro-Host (Expo Go im WLAN/Tailscale): http://<Server>:3000/api/ai
    Ist nichts erreichbar, übernimmt der eingebaute Bot (bot.js) als Fallback. */
 import { NativeModules } from 'react-native';
+import Constants from 'expo-constants';
+import { hubAiBase } from './hubsync';
 
 const DEFAULT_TIMEOUT = 45000;
 /* Bilder brauchen deutlich länger: ein Vision-Modell auf der CPU liegt leicht
@@ -22,8 +24,13 @@ export class AiVisibleError extends Error {
 /* Host des Metro-Bundlers (= der Studio-Server) aus der Bundle-URL ziehen.
    Funktioniert in Expo Go / Dev-Builds; im Release-APK ist die URL file:// */
 function metroHost() {
+  /* v3: Unter der New Architecture (Pflicht ab SDK 55) liefert NativeModules.SourceCode.scriptURL
+     nichts mehr — die KI war am Handy deshalb nie erreichbar. Expo nennt den PC über hostUri. */
   try {
-    const url = NativeModules.SourceCode && NativeModules.SourceCode.scriptURL;
+    const hostUri = (Constants.expoConfig && Constants.expoConfig.hostUri) || '';
+    if (hostUri) return String(hostUri).split(':')[0];
+    const sc = NativeModules.SourceCode;
+    const url = sc && (sc.scriptURL || (sc.getConstants && sc.getConstants().scriptURL));
     const m = String(url || '').match(/^https?:\/\/([^:/]+)/);
     return m ? m[1] : '';
   } catch { return ''; }
@@ -34,8 +41,11 @@ export function aiBase(aiBaseUrl) {
   if (b) return b;
   const env = (process.env.EXPO_PUBLIC_AI_URL || '').trim().replace(/\/+$/, '');
   if (env) return env;
+  // v3: zuerst der gefundene VetNow Hub (bietet /api/ai weiter an), sonst der PC auf Port 8787.
+  const hub = hubAiBase();
+  if (hub) return hub;
   const host = metroHost();
-  return host ? `http://${host}:3000/api/ai` : '';
+  return host ? `http://${host}:8787/api/ai` : '';
 }
 
 async function fetchJson(url, opts = {}, timeout = DEFAULT_TIMEOUT) {

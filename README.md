@@ -1,5 +1,30 @@
 # VetNow Kärnten
 
+## v3 — Schnellstart (September 2026)
+
+**Doppelklick auf `START-VETNOW.bat`** (im Ordner darüber) → Web-App und **Kontrollzentrum** öffnen sich.
+
+| Teil | Wo | Neu in v3 |
+|---|---|---|
+| **VetNow Hub** | `hub/` · http://localhost:8787 | verbindet alle Geräte live (Status, Anfragen, Antworten), Bot + KI serverseitig |
+| **Kontrollzentrum** | http://localhost:8787/konsole/ | Admin- & Test-Seite mit Knöpfen für alles (Simulation, Geräte, Bot/KI, Zeit, Fehler, Selbsttest) |
+| Web-App / PWA | `web/` · /vetnow/ | Live-Status vom Hub, echtes Datum, Routen-Links, Tab-Leiste fix |
+| iPhone/Android | `mobile/` | **Expo SDK 57** (aktuelle Expo Go), Hub-Anbindung, KI-Adresse repariert |
+| Extension | `extension/` | v3: live mit dem Hub, sicher, Optionen, Firefox-tauglich |
+| Gemeinsamer Kern | `shared/` | Bot 3.0 mit Sicherheits-Triage, Status-Engine, Store, KI-Client — eine Quelle für alle |
+
+Anleitung zum Testen auf allen Geräten: **[docs/TESTEN.md](docs/TESTEN.md)** · Architektur: [docs/V3-ARCHITEKTUR.md](docs/V3-ARCHITEKTUR.md) · Änderungen: [docs/CHANGELOG-v3.md](docs/CHANGELOG-v3.md)
+
+```bash
+npm test            # Kern, Bot 3.0, Hub, Web-Build, Extension
+npm run dev         # Hub + Web-App mit Live-Reload
+npm run mobile      # Expo Go (Hub-Adresse wird automatisch mitgegeben)
+```
+
+---
+
+## Bisherige Doku (v2)
+
 Notfall-Tierarzt-Finder für Kärnten, Österreich — Praxen nach Bezirk/Tierart/Situation
 filtern, Status-Ampel (grün/gelb/grau/rot), Chat zwischen Tierhalter:innen und Praxen,
 Praxis-Dashboard, Login/Registrierung. **Alle enthaltenen Daten sind Platzhalter-Testdaten**

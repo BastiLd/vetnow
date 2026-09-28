@@ -439,3 +439,17 @@ html[data-frame="phone"] .vn-body:not(.has-bottomnav)::after { content: ''; disp
 .agent-line { font-size: 13px; line-height: 1.45; background: var(--surface); border: 1px solid var(--line-2); border-radius: 10px; padding: 8px 11px; animation: agent-in .25s ease; }
 @keyframes agent-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .agent-report { font-family: inherit; font-size: 13px; line-height: 1.55; white-space: pre-wrap; background: var(--teal-50); border: 1px solid var(--teal-100); border-radius: 12px; padding: 12px; margin: 0; color: var(--teal-900); }
+
+/* ===== v3: Tab-Leiste bleibt am unteren Rand (vorher lag sie am Dokumentende und war erst
+   nach ganz unten Scrollen sichtbar), Inhalt bekommt Platz dafür. Live-Anzeige im Kopf. ===== */
+@media (max-width: 879px) {
+  .mobile-tabbar { position: fixed; left: 0; right: 0; bottom: 0; }
+  .vn-body.has-bottomnav { padding-bottom: calc(76px + var(--safe-bottom)); }
+  .agent-fab { bottom: calc(88px + var(--safe-bottom)); }
+}
+.vn-live-pill {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px;
+  font-size: 12px; font-weight: 700; color: #5e6e6a; background: #eef1f0; white-space: nowrap;
+}
+.vn-live-pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.vn-live-pill.on { color: #137a39; background: #e7f6ec; }

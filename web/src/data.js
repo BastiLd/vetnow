@@ -350,11 +350,17 @@ export const BLOCKS = [
 // ============================================================
 //  CALENDAR — appointments keyed by ISO date (Juni 2026)
 // ============================================================
-export const TODAY_ISO = '2026-06-04';
+/* v3: „Heute" ist das echte heutige Datum. Die Demo-Termine wurden für den 04.06.2026 geschrieben
+   und werden unten um die Differenz verschoben, damit sie immer rund um heute liegen. */
+const DEMO_BASE_ISO = '2026-06-04';
+function localTodayISO() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+export const TODAY_ISO = localTodayISO();
+const SHIFT_DAYS = Math.round((Date.parse(TODAY_ISO + 'T12:00:00') - Date.parse(DEMO_BASE_ISO + 'T12:00:00')) / 86400000);
+function shiftIso(iso) { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + SHIFT_DAYS); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 export const MONTHS_DE = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
 export const DOW_DE = ['Mo','Di','Mi','Do','Fr','Sa','So'];
 
-export const APPTS_BY_DATE = {
+const APPTS_TEMPLATE = {
   '2026-06-02': [
     { time: '08:45', name: 'Rocky (Familie Novak)', animal: 'dog', status: 'done', reason: 'Nachkontrolle Pfote' },
     { time: '10:15', name: 'Nala (Frau Pichler)', animal: 'cat', status: 'done', reason: 'Impfung' },
@@ -394,6 +400,11 @@ export const APPTS_BY_DATE = {
     { time: '16:00', name: 'Aki (Hr. Wieser)', animal: 'dog', status: 'open', reason: 'Hautprobleme' },
   ],
 };
+/* chatId: die Termine zeigten früher auf die alten IDs c1..c4, der Chat-Store nutzt ch-c1..ch-c4 —
+   deshalb kam die Abschlussnotiz nie im Chat an. */
+export const APPTS_BY_DATE = Object.fromEntries(Object.entries(APPTS_TEMPLATE).map(([iso, list]) => [
+  shiftIso(iso), list.map((a) => (a.convoId ? { ...a, chatId: 'ch-' + a.convoId } : a)),
+]));
 // backward-compat: today's list
 export const APPOINTMENTS = APPTS_BY_DATE[TODAY_ISO];
 

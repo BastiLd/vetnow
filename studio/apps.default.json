@@ -1,9 +1,33 @@
 {
   "groups": [
-    { "id": "vetnow", "name": "VetNow Kärnten", "color": "#0f9b8e", "icon": "🐾", "description": "Notfall-Tierarzt-Finder — Web, iPhone & Extension" },
-    { "id": "avocado", "name": "Avocado at Law", "color": "#58CC02", "icon": "🥑", "description": "Duolingo für Recht — Web & iPhone" },
-    { "id": "ghgflix", "name": "GHGFlix", "color": "#e50914", "icon": "🎬", "description": "Deine eigene Netflix-Alternative — Handy-App, Fernseher & Server-Oberfläche" },
-    { "id": "andere", "name": "Weitere Projekte", "color": "#2e6f9e", "icon": "🗂️", "description": "Eigene Apps hinzufügen (auch aus fremden Git-Repos)" }
+    {
+      "id": "vetnow",
+      "name": "VetNow Kärnten",
+      "color": "#0f9b8e",
+      "icon": "🐾",
+      "description": "Notfall-Tierarzt-Finder — Web, iPhone & Extension"
+    },
+    {
+      "id": "avocado",
+      "name": "Avocado at Law",
+      "color": "#58CC02",
+      "icon": "🥑",
+      "description": "Duolingo für Recht — Web & iPhone"
+    },
+    {
+      "id": "ghgflix",
+      "name": "GHGFlix",
+      "color": "#e50914",
+      "icon": "🎬",
+      "description": "Deine eigene Netflix-Alternative — Handy-App, Fernseher & Server-Oberfläche"
+    },
+    {
+      "id": "andere",
+      "name": "Weitere Projekte",
+      "color": "#2e6f9e",
+      "icon": "🗂️",
+      "description": "Eigene Apps hinzufügen (auch aus fremden Git-Repos)"
+    }
   ],
   "apps": [
     {
@@ -52,7 +76,7 @@
       "webDir": "web",
       "distDir": "dist-demo",
       "basePath": "/vetnow-demo/",
-      "buildCmd": "npm ci && npx vite build --base=/vetnow-demo/ --outDir dist-demo"
+      "buildCmd": "npm ci && VITE_BASE=/vetnow-demo/ npx vite build --outDir dist-demo"
     },
     {
       "id": "vetnow-mobile-clean",
@@ -62,9 +86,11 @@
       "icon": "📱",
       "kind": "expo",
       "expoDir": "mobile",
-      "expoSdk": "54",
+      "expoSdk": "57",
       "expoPort": 8081,
-      "env": { "EXPO_PUBLIC_VN_CLEAN": "true" }
+      "env": {
+        "EXPO_PUBLIC_VN_CLEAN": "true"
+      }
     },
     {
       "id": "vetnow-mobile-demo",
@@ -74,7 +100,7 @@
       "icon": "🧫",
       "kind": "expo",
       "expoDir": "mobile",
-      "expoSdk": "54",
+      "expoSdk": "57",
       "expoPort": 8082,
       "env": {}
     },
@@ -87,7 +113,6 @@
       "kind": "extension",
       "extensionDir": "extension"
     },
-
     {
       "_kommentar": "GHGFlix liegt in einem EIGENEN Repo — das Studio klont es beim ersten Start automatisch nach /data/ext-repos/ghgflix-mobile.",
       "id": "ghgflix-mobile",

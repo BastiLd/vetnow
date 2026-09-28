@@ -85,3 +85,49 @@ body { width: 360px; height: 540px; font-family: 'Inter', system-ui, -apple-syst
 .nav button.is-on { color: var(--teal-700); }
 .nav .badge { position: absolute; top: 4px; right: 50%; transform: translateX(16px); min-width: 15px; height: 15px; border-radius: 8px; background: var(--teal-600); color: #fff; font-size: 9px; font-weight: 800; display: grid; place-items: center; padding: 0 3px; }
 .muted { color: var(--ink-3); font-size: 12.5px; text-align: center; padding: 20px 0; }
+
+/* ===== v3 ===== */
+.head { position: relative; }
+.live-pill { margin-left: 6px; font-size: 10.5px; font-weight: 800; padding: 2px 8px; border-radius: 999px; background: #eef1f0; color: #5e6e6a; }
+.live-pill.on { background: #e7f6ec; color: #137a39; }
+.status-mini .d { background: var(--c, #94a39f); }
+.section-title { font-weight: 800; font-size: 14px; margin: 2px 0 10px; }
+.status-now { display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--c); margin-bottom: 10px; }
+.status-now .dot, .status-btn .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c, currentColor); display: inline-block; }
+.status-now .dot { background: var(--c); }
+.status-row { display: flex; gap: 6px; margin-bottom: 10px; }
+.status-btn.is-on { border-color: var(--teal-600); box-shadow: 0 0 0 2px rgba(15,155,142,.18); }
+.count-box { text-align: center; background: var(--surface-2, #f4f7f6); border-radius: 12px; padding: 10px; margin-bottom: 10px; }
+.countdown { font: 700 24px/1.2 ui-monospace, Consolas, monospace; letter-spacing: .04em; }
+.hint { font-size: 11.5px; color: var(--ink-3); margin: 8px 0; }
+.row-2, .row-3 { display: grid; gap: 6px; grid-template-columns: 1fr 1fr; margin-top: 8px; }
+.row-3 { grid-template-columns: 1fr 1fr 1fr; }
+.muted { color: var(--ink-3); font-size: 12px; }
+.ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; max-width: 220px; }
+.appt-list, .msg-list { display: grid; gap: 6px; }
+.appt, .msg-item { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; border: 1px solid var(--line); background: var(--surface); border-radius: 11px; padding: 8px 10px; cursor: pointer; font: inherit; color: inherit; }
+.appt:hover, .msg-item:hover { border-color: var(--teal-600); }
+.appt-time { font-weight: 800; font-size: 12.5px; min-width: 40px; }
+.appt-emoji { font-size: 18px; }
+.appt-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.appt-detail { display: grid; gap: 4px; margin: 8px 0; }
+.badge-inline { background: #dc2626; color: #fff; border-radius: 999px; font-size: 11px; font-weight: 800; padding: 1px 7px; }
+.back { border: 0; background: none; color: var(--teal-600); font-weight: 700; cursor: pointer; padding: 0 0 8px; font: inherit; }
+.bubble-row.me { justify-content: flex-end; }
+.bubble.me { background: var(--teal-600); color: #fff; }
+.bubble-time { font-size: 10px; opacity: .7; margin-top: 3px; }
+.msg-img { max-width: 180px; border-radius: 9px; display: block; }
+.note { background: #fdf2da; border-radius: 10px; padding: 8px 10px; font-size: 12.5px; }
+.quick { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 6px; }
+.chip { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 4px 9px; font-size: 11.5px; cursor: pointer; font: inherit; }
+.compose { display: flex; gap: 6px; }
+.input { flex: 1; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; font: inherit; width: 100%; background: var(--surface); color: var(--ink); }
+textarea.input { min-height: 56px; margin: 6px 0; }
+.chat-scroll { max-height: 280px; overflow-y: auto; }
+button:focus-visible, .input:focus-visible { outline: 3px solid rgba(15,155,142,.45); outline-offset: 2px; }
+@media (min-width: 420px) { body { width: auto; max-width: 480px; margin: 0 auto; } }
+@media (prefers-color-scheme: dark) {
+  :root { --surface: #16221f; --surface-2: #0e1715; --ink: #e6efec; --ink-2: #b9c8c4; --ink-3: #93a6a1; --line: #26352f; }
+  body, .pop, .nav, .head { background: #0e1715; color: #e6efec; }
+  .note { background: #33290f; }
+}

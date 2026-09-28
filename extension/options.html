@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <title>VetNow – Optionen</title>
+  <link rel="stylesheet" href="popup.css" />
+  <style>
+    body { width: auto; height: auto; overflow: auto; max-width: 620px; margin: 0 auto; padding: 24px; }
+    label { display: block; font-weight: 700; margin: 14px 0 4px; }
+    .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin-bottom: 14px; }
+    #result { margin-top: 8px; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <h1 style="font-size:20px;margin-bottom:12px">VetNow Kärnten – Praxis · Optionen</h1>
+  <div class="card">
+    <label for="hub">Adresse des VetNow Hubs</label>
+    <input id="hub" class="input" placeholder="http://localhost:8787" />
+    <p class="hint">PC mit START-VETNOW.bat: <code>http://localhost:8787</code> · ZimaOS-Studio: <code>http://192.168.68.10:3000</code></p>
+    <button id="test" class="btn btn-secondary btn-sm">Verbindung testen</button>
+    <div id="result"></div>
+    <label for="practice">Ihre Praxis</label>
+    <select id="practice" class="input"><option value="drautal">Tierarztpraxis Drautal</option></select>
+    <label for="web">Adresse der Web-App für „Vollansicht" (leer = automatisch)</label>
+    <input id="web" class="input" placeholder="automatisch" />
+  </div>
+  <button id="save" class="btn btn-primary">Speichern</button>
+  <span id="saved" class="hint"></span>
+  <script type="module" src="options.js"></script>
+</body>
+</html>

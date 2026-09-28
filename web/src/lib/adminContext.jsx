@@ -3,6 +3,7 @@ import React from 'react';
 import { buildVNData } from '../data.js';
 import { getHideTestData, setHideTestDataStored, getAdminLoggedIn, setAdminLoggedInStored, getAuth, setAuthStored, AUTH_EMPTY } from './admin.js';
 import { IS_CLEAN } from './config.js';
+import { useHub, overlayPractices, hubNow } from './hubsync.js';
 
 const AdminContext = React.createContext(null);
 
@@ -20,7 +21,17 @@ export function AdminProvider({ children }) {
   const setAdminLoggedIn = (on) => { setAdminLoggedInStored(on); setLogged(on); };
   const setAuth = (a) => { const next = a && a.role ? a : { ...AUTH_EMPTY }; setAuthState(next); setAuthStored(next); };
 
-  const data = React.useMemo(() => buildVNData(IS_CLEAN || hideTestData), [hideTestData]);
+  /* v3: Läuft ein Hub, kommt der Praxis-Status LIVE von dort (von Extension, Handy, Dashboard gesetzt). */
+  const hub = useHub();
+  const [tick, setTick] = React.useState(0);
+  React.useEffect(() => { const t = setInterval(() => setTick((x) => x + 1), 60000); return () => clearInterval(t); }, []);
+  const data = React.useMemo(() => {
+    const d = buildVNData(IS_CLEAN || hideTestData);
+    if (hub.practices.length) d.PRACTICES = overlayPractices(d.PRACTICES, hub.practices, hubNow());
+    d.HUB = { status: hub.status, devices: hub.devices };
+    return d;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hideTestData, hub.practices, hub.status, hub.devices, hub.clockOffsetMs, tick]);
 
   const value = React.useMemo(
     () => ({ hideTestData, setHideTestData, adminLoggedIn, setAdminLoggedIn, auth, setAuth, data, isClean: IS_CLEAN }),

@@ -4,6 +4,7 @@ import { VNIcon, Checkbox, toast } from './components.jsx';
 import { ANIMALS, SITUATIONS, DISTRICTS, ANIMAL_LABEL, SERVICE_LABEL } from './data.js';
 import { useVNData } from './lib/adminContext.jsx';
 import { useChats } from './lib/chats.jsx';
+import { hubSendRequest } from './lib/hubsync.js';
 import { ANIMAL_ICON } from './components.jsx';
 
 export function Field({ label, req, children }) {
@@ -55,6 +56,8 @@ export function ScreenRequest({ nav, filters, practiceId, auth }) {
         labels: ['tiere'],
         messages: [{ from: 'owner', text: firstMsg, time: 'jetzt' }],
       });
+      // v3: Mit Hub landet die Anfrage zusätzlich LIVE im Posteingang der Praxis (Dashboard, Extension, Handy).
+      hubSendRequest({ practiceId: p && p.id, ownerName: form.name, phone: form.phone, animal: form.animal || 'other', situation: form.situation || '', district: form.district || '', message: firstMsg });
       setChatId(id);
       setSent(true);
       toast('Anfrage gesendet — als Chat gespeichert.', 'success');

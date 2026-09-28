@@ -35,3 +35,7 @@ Thumbs.db
 # Editor
 .vscode/
 .idea/
+
+# VetNow Hub (Laufzeitdaten + optionale Abhängigkeiten)
+hub/data/
+hub/node_modules/

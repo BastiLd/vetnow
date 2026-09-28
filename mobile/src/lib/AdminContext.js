@@ -4,6 +4,7 @@ import React from 'react';
 import { buildVNData } from '../data';
 import { loadHideTestData, storeHideTestData, loadAdminLoggedIn, storeAdminLoggedIn, loadAuth, storeAuth, AUTH_EMPTY } from './admin';
 import { IS_CLEAN } from './config';
+import { useHub, overlayPractices, hubNow } from './hubsync';
 
 const AppStateContext = React.createContext(null);
 
@@ -27,7 +28,14 @@ export function AppStateProvider({ children }) {
      Anmeldung einen Neustart der App überlebt. */
   const setAuth = (a) => { const next = a && a.role ? a : { ...AUTH_EMPTY }; setAuthState(next); storeAuth(next); };
 
-  const data = React.useMemo(() => buildVNData(IS_CLEAN || hideTestData), [hideTestData]);
+  /* v3: Läuft ein VetNow Hub, kommt der Praxis-Status live von dort (Extension, PC, andere Handys). */
+  const hub = useHub();
+  const data = React.useMemo(() => {
+    const d = buildVNData(IS_CLEAN || hideTestData);
+    if (hub.practices.length) d.PRACTICES = overlayPractices(d.PRACTICES, hub.practices, hubNow());
+    d.HUB = { status: hub.status, url: hub.url };
+    return d;
+  }, [hideTestData, hub.practices, hub.status, hub.url, hub.clockOffsetMs]);
 
   /* ---- Termin-Store (Praxis-Kalender) ---- */
   const [clinicAppts, setClinicAppts] = React.useState({});

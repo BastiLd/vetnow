@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>VetNow Kontrollzentrum</title>
+  <meta name="theme-color" content="#0c7d72">
+  <link rel="stylesheet" href="konsole.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand"><span class="paw">🐾</span> VetNow <b>Kontrollzentrum</b> <span id="ver" class="muted"></span></div>
+    <div class="top-right">
+      <span id="hubPill" class="pill grey" data-testid="hub-status">Verbinde…</span>
+      <a class="btn ghost" href="/vetnow/" target="_blank" rel="noopener">Web-App öffnen</a>
+      <button class="btn ghost" id="themeBtn" title="Hell/Dunkel">◐</button>
+    </div>
+  </header>
+
+  <section id="login" class="card login" hidden>
+    <h2>Anmelden</h2>
+    <p class="muted">Vom PC selbst (localhost) brauchst du kein Passwort. Von anderen Geräten im WLAN schon (Standard: <code>vetnow2026</code>).</p>
+    <form id="loginForm"><input id="pw" type="password" placeholder="Admin-Passwort" autocomplete="current-password" aria-label="Admin-Passwort"> <button class="btn">Anmelden</button></form>
+    <p id="loginMsg" class="err"></p>
+  </section>
+
+  <nav class="tabs" id="tabs" role="tablist"></nav>
+  <main id="main"></main>
+  <div id="toasts" aria-live="polite"></div>
+  <script type="module" src="konsole.js"></script>
+</body>
+</html>

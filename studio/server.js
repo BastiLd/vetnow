@@ -54,6 +54,19 @@ const app = express();
    Die Apps rechnen Bilder vorher auf ~1024 px herunter (typisch 150-400 KB),
    das Limit ist der Sicherheitspuffer für Bild + Gesprächsverlauf + Prompt.
    Mit 2 MB endete jede Bildanfrage in einem HTTP 413. */
+/* v3: VetNow Hub einhängen (Live-Sync aller Geräte, Bot 3.0, KI-Anbieter, Kontrollzentrum /konsole/).
+   Muss VOR express.json() stehen, weil der Hub Anhänge als Roh-Daten liest. Scheitert das Laden,
+   läuft das Studio wie bisher weiter. Handys erreichen den Hub unter http://<Server>:3000/api/v1. */
+let vnHub = null;
+import('../hub/hub.js')
+  .then(({ createHub }) => createHub({ dataDir: path.join(process.env.STUDIO_DATA_DIR || path.join(__dirname, 'data'), 'hub'), rootRedirect: false, legacyAi: false }))
+  .then((h) => { vnHub = h; console.log('[studio] VetNow Hub eingehängt: /api/v1 · /konsole/'); })
+  .catch((e) => console.warn('[studio] VetNow Hub nicht geladen:', e.message));
+app.use((req, res, next) => {
+  if (vnHub && (req.path.startsWith('/api/v1') || req.path.startsWith('/konsole') || req.path.startsWith('/extension/'))) return vnHub.handle(req, res, next);
+  next();
+});
+
 app.use(express.json({ limit: '8mb' }));
 
 // ---------- Web-Vorschau: statisch aus dem dist-Ordner je App (basePath) ----------
@@ -253,6 +266,7 @@ app.post('/api/apps/:id/action', async (req, res) => {
     const envx = {
       REACT_NATIVE_PACKAGER_HOSTNAME: ip, CI: '1', EXPO_NO_TELEMETRY: '1',
       EXPO_PUBLIC_AI_URL: `http://${ip}:3000/api/ai`, // KI-Proxy fürs Handy (Expo Go)
+      EXPO_PUBLIC_HUB_URL: `http://${ip}:3000`, // v3: VetNow Hub (Live-Sync) im Studio
       ...(a.env || {}),
     };
     const port = a.expoPort || 8081;

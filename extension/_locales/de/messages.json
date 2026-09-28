@@ -1,5 +1,4 @@
 {
-  "appName": {
-    "message": "VetNow Kärnten – Praxis"
-  }
+  "appName": { "message": "VetNow Kärnten – Praxis" },
+  "appDesc": { "message": "Praxis-Status, Termine und Anfragen – live synchron mit Web-App und Handy-App (VetNow Hub)." }
 }

@@ -12,6 +12,18 @@ import { ScreenExtension } from './screens-ext.jsx';
 import { ScreenAdmin } from './screens-admin.jsx';
 import { ScreenChats } from './screens-chats.jsx';
 import { AgentPanel } from './agent.jsx';
+import { useHub } from './lib/hubsync.js';
+
+/* v3: kleine Anzeige, ob die App live mit dem Hub verbunden ist (alle Geräte synchron) oder lokal läuft. */
+function LivePill() {
+  const hub = useHub();
+  const on = hub.status === 'online';
+  return (
+    <span className={'vn-live-pill' + (on ? ' on' : '')} title={on ? 'Live mit dem VetNow Hub verbunden' + (hub.devices ? ' · ' + hub.devices + ' Geräte' : '') : 'Lokaler Modus (kein Hub erreichbar)'}>
+      {on ? 'Live' : 'Lokal'}
+    </span>
+  );
+}
 
 const SCREEN_META = {
   home:      { title: '', back: null },
@@ -43,6 +55,7 @@ function TopBar({ route, nav, auth, onLogout }) {
       <header className="vn-topbar between">
         <Brand />
         <div className="row gap-2">
+          <LivePill />
           <button className="vn-back m-hide" onClick={() => nav('owner-messages')} aria-label="Meine Nachrichten" style={{ color: 'var(--teal-700)' }}><VNIcon.chat s={20} /></button>
           {loggedIn && auth.role === 'clinic' && <button className="btn btn-secondary btn-sm m-hide" onClick={() => nav('dashboard')}>Dashboard</button>}
           {loggedIn
@@ -111,6 +124,7 @@ function LegalFooter({ nav }) {
         <div className="row gap-3" style={{ marginTop: 10 }}>
           <a className="link" style={{ color: 'var(--ink-3)', fontSize: 12.5, cursor: 'pointer' }} onClick={() => nav('admin')}>Admin</a>
           <a className="link" style={{ color: 'var(--ink-3)', fontSize: 12.5, cursor: 'pointer' }} onClick={() => nav('extension')}>Extension-Vorschau</a>
+          <a className="link" style={{ color: 'var(--ink-3)', fontSize: 12.5 }} href="/konsole/">Kontrollzentrum</a>
         </div>
       </div>
     </footer>
@@ -126,6 +140,7 @@ export default function App({ initialScreen, initialId }) {
   const nav = (name, opts) => {
     setRoute({ name: name || 'home', ...(opts || {}) });
     if (bodyRef.current) bodyRef.current.scrollTop = 0;
+    if (typeof window !== 'undefined') window.scrollTo(0, 0); // gescrollt wird das Fenster, nicht .vn-body
   };
 
   const handleLogout = () => {

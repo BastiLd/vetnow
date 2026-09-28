@@ -2,6 +2,10 @@
    Navigation: Bottom-Tabs (Start / Suchen / Nachrichten / Konto) wie ein Dock,
    darüber ein Root-Stack für Chat-Threads und Admin (Zurück per Wisch-Geste). */
 import React from 'react';
+import { startHubSync } from './src/lib/hubsync';
+
+// v3: Live-Verbindung zum VetNow Hub (falls im WLAN erreichbar).
+startHubSync();
 import { View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';

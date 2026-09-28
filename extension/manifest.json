@@ -1,22 +1,24 @@
 {
   "manifest_version": 3,
-  "name": "VetNow Kärnten – Praxis",
-  "version": "1.0.0",
-  "description": "Mini-Arbeitsoberfläche für Praxen: Status pflegen, Termine & Nachrichten – direkt im Browser.",
+  "name": "__MSG_appName__",
+  "version": "3.0.0",
+  "description": "__MSG_appDesc__",
   "default_locale": "de",
   "action": {
-    "default_title": "VetNow Kärnten",
+    "default_title": "__MSG_appName__",
     "default_popup": "popup.html",
-    "default_icon": {
-      "16": "icons/icon-16.png",
-      "48": "icons/icon-48.png",
-      "128": "icons/icon-128.png"
-    }
+    "default_icon": { "16": "icons/icon-16.png", "48": "icons/icon-48.png", "128": "icons/icon-128.png" }
   },
-  "icons": {
-    "16": "icons/icon-16.png",
-    "48": "icons/icon-48.png",
-    "128": "icons/icon-128.png"
-  },
-  "permissions": ["storage"]
+  "icons": { "16": "icons/icon-16.png", "48": "icons/icon-48.png", "128": "icons/icon-128.png" },
+  "background": { "service_worker": "bg.js", "scripts": ["bg.js"], "type": "module" },
+  "options_ui": { "page": "options.html", "open_in_tab": true },
+  "permissions": ["storage", "alarms"],
+  "host_permissions": ["http://localhost/*", "http://127.0.0.1/*"],
+  "optional_host_permissions": ["http://*/*", "https://*/*"],
+  "minimum_chrome_version": "116",
+  "content_security_policy": { "extension_pages": "script-src 'self'; object-src 'self'" },
+  "browser_specific_settings": {
+    "gecko": { "id": "vetnow-praxis@bastild.github.io", "strict_min_version": "140.0", "data_collection_permissions": { "required": ["none"] } },
+    "gecko_android": { "strict_min_version": "142.0" }
+  }
 }

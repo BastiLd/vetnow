@@ -2,19 +2,26 @@
   "expo": {
     "name": "VetNow Kärnten",
     "slug": "vetnow-kaernten",
-    "version": "1.0.0",
+    "version": "3.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "backgroundColor": "#f4f7f6",
     "primaryColor": "#0c7d72",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "at.vetnow.kaernten",
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true,
+          "NSAllowsLocalNetworking": true
+        },
+        "NSLocalNetworkUsageDescription": "VetNow verbindet sich im WLAN mit dem VetNow Hub, damit Praxis-Status und Anfragen auf allen Geräten gleich sind."
+      }
     },
     "android": {
       "package": "at.vetnow.kaernten",
-      "versionCode": 1,
-      "usesCleartextTraffic": true,
+      "versionCode": 3,
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#0c7d72",
@@ -28,8 +35,17 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Erlaube VetNow Kärnten den Zugriff auf deine Fotos, um Bilder an Nachrichten anzuhängen.",
-          "cameraPermission": "Erlaube VetNow Kärnten den Zugriff auf die Kamera, um Fotos für Nachrichten aufzunehmen."
+          "photosPermission": "Erlauben Sie VetNow Kärnten den Zugriff auf Ihre Fotos, um Bilder an Nachrichten anzuhängen.",
+          "cameraPermission": "Erlauben Sie VetNow Kärnten den Zugriff auf die Kamera, um Fotos für Nachrichten aufzunehmen."
+        }
+      ],
+      "expo-status-bar",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
         }
       ]
     ],
@@ -38,6 +54,7 @@
         "projectId": "a24f0f8b-5c86-4cc3-b10a-42785275b6c9"
       }
     },
-    "owner": "lightningbasti"
+    "owner": "lightningbasti",
+    "scheme": "vetnow"
   }
 }

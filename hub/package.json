@@ -1,0 +1,18 @@
+{
+  "name": "vetnow-hub",
+  "version": "3.0.0",
+  "private": true,
+  "description": "VetNow Hub — gemeinsamer Server für Web, Handy und Extension (Protokoll 3)",
+  "type": "module",
+  "main": "hub.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "test": "node --test"
+  },
+  "optionalDependencies": {
+    "@anthropic-ai/sdk": "^0.128.0"
+  }
+}

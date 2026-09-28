@@ -5,6 +5,7 @@ import { VNIcon, StatusBadge, Switch, Tooltip, toast } from './components.jsx';
 import { DISTRICTS, SPECIALTIES } from './data.js';
 import { useVNData } from './lib/adminContext.jsx';
 import { useChats } from './lib/chats.jsx';
+import { hubConfirmStatus } from './lib/hubsync.js';
 import { CalendarPanel } from './screens-f.jsx';
 import { ChatsPanel } from './screens-chats.jsx';
 
@@ -43,7 +44,7 @@ function StatusPanel({ s }) {
           <div className="er-main">
             <strong>Status läuft bald ab</strong> — in <span className="er-time">{pad2(s.hh)}:{pad2(s.mm)}:{pad2(s.ss)}</span> werden Sie automatisch grau markiert.
           </div>
-          <button className="btn btn-primary btn-sm" onClick={() => { s.setExpiry(Date.now() + s.DURATION); toast('Status um 24 Stunden verlängert.', 'success'); }}>
+          <button className="btn btn-primary btn-sm" onClick={() => { s.setExpiry(Date.now() + s.DURATION); hubConfirmStatus(s.me && s.me.id, s.picked); toast('Status um 24 Stunden verlängert.', 'success'); }}>
             <VNIcon.refresh s={15} /> Jetzt verlängern
           </button>
         </div>
@@ -55,7 +56,7 @@ function StatusPanel({ s }) {
             <div className="status-pick">
               {statuses.map((st) => (
                 <button key={st.key} className={'status-btn ' + st.cls + (s.picked === st.key ? ' is-on' : '')}
-                  onClick={() => { s.setPicked(st.key); s.setExpiry(Date.now() + s.DURATION); toast('Status aktualisiert.', 'success'); }}>
+                  onClick={() => { s.setPicked(st.key); s.setExpiry(Date.now() + s.DURATION); hubConfirmStatus(s.me && s.me.id, st.key); toast('Status aktualisiert.', 'success'); }}>
                   <span className="sb-dot" style={{ background: 'var(--' + (st.key === 'green' ? 'green' : st.key === 'yellow' ? 'yellow' : 'red') + ')' }}></span>
                   <span><span className="sb-title">{st.title}</span><span className="sb-sub">{st.sub}</span></span>
                   <span className="sb-check"><VNIcon.check s={20} /></span>
@@ -76,7 +77,7 @@ function StatusPanel({ s }) {
                 <div style={{ fontWeight: 650, fontSize: 14 }}>{s.active ? s.expiryStr : '—'}</div>
               </div>
             </div>
-            <button className="btn btn-primary btn-lg btn-block" style={{ marginTop: 14 }} onClick={() => { s.setExpiry(Date.now() + s.DURATION); toast('Status für 24 Stunden bestätigt.', 'success'); }}>
+            <button className="btn btn-primary btn-lg btn-block" style={{ marginTop: 14 }} onClick={() => { s.setExpiry(Date.now() + s.DURATION); hubConfirmStatus(s.me && s.me.id, s.picked); toast('Status für 24 Stunden bestätigt.', 'success'); }}>
               <VNIcon.refresh s={18} /> Status für 24 Stunden bestätigen
             </button>
             <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--line)' }}>
@@ -404,9 +405,9 @@ function DashboardInner({ D, me }) {
   const completeAppt = (dateIso, idx, noteText) => {
     setAppts((m) => ({ ...m, [dateIso]: (m[dateIso] || []).map((a, i) => i === idx ? { ...a, status: 'done', note: noteText } : a) }));
     const a = (appts[dateIso] || [])[idx];
-    if (a && a.convoId && chats.some((c) => c.id === a.convoId)) {
-      addMessage(a.convoId, { type: 'note', text: noteText, time: 'jetzt' });
-    }
+    const target = a && [a.chatId, a.convoId].find((id) => id && chats.some((c) => c.id === id));
+    if (target) addMessage(target, { type: 'note', text: noteText, time: 'jetzt' });
+    else if (a && (a.chatId || a.convoId)) toast('Notiz gespeichert — der zugehörige Chat existiert nicht mehr.', 'info');
   };
 
   const active = expiry && now < expiry;
